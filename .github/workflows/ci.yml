@@ -1,4 +1,4 @@
-name: TeamFlow CI Pipeline
+name: TeamFlow Production CI Pipeline
 
 on:
   push:
@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  backend-checks:
-    name: Backend Build & Validation
+  backend-test-suite:
+    name: Backend Tests & Security Audits
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -25,12 +29,16 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
-      - name: Check backend syntax and test
+      - name: Syntax and lint check
         working-directory: ./backend
         run: node -c src/server.js
 
-  frontend-checks:
-    name: Frontend Build & Typecheck
+      - name: Run complete automated backend test suite
+        working-directory: ./backend
+        run: npm test
+
+  frontend-build-and-test:
+    name: Frontend Tests & Production Vite Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -47,6 +55,10 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Run Vite production build
+      - name: Run frontend unit & validation tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Execute Vite production bundle build
         working-directory: ./frontend
         run: npm run build

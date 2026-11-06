@@ -1,7 +1,15 @@
 import axios from 'axios';
 
-// Base API URL from environment variable or proxy fallback
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Defensive Base API URL normalization: ensures whether input is root host, /api, or /api/v1,
+// the resulting client baseURL is always formatted cleanly for /v1/... endpoints.
+const rawApiUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+const API_BASE_URL = rawApiUrl.endsWith('/api/v1')
+  ? rawApiUrl.slice(0, -3) // Normalize /api/v1 -> /api
+  : rawApiUrl.endsWith('/api')
+  ? rawApiUrl
+  : rawApiUrl === '' || rawApiUrl === '/api'
+  ? '/api'
+  : `${rawApiUrl}/api`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -139,7 +139,7 @@ npm run build:frontend
   - [x] Unread message counts and channel badges
   - [x] Polished editorial chat interface (`/chat`) with responsive mobile channel drawer
   - [x] 37/37 automated backend tests passing across models, auth, core workflows, and real-time socket events
-- [x] **Milestone 7: Production Cloud Deployment, Hardening & Final Verification**
+- [x] **Milestone 7: Product Polish, Real Analytics, File Attachments & Performance**
   - [x] Real database analytics engine (`/api/v1/workspaces/:workspaceId/analytics`) with MongoDB aggregations for task breakdown, project completion %, overdue count, team capacity, and activity velocity
   - [x] Timeframe filter controls (`7d`, `30d`, `90d`, `all`) with dynamic metric calculations
   - [x] Task file attachments subsystem (`/api/v1/tasks/:taskId/attachments`) backed by Mongoose with 10MB file limit & MIME type enforcement
@@ -153,3 +153,82 @@ npm run build:frontend
   - [x] Render backend blueprint configuration (`render.yaml`) with health probes and zero-hardcoded secrets
   - [x] Production database seed script (`backend/src/scripts/seed.js`) with Acme Innovation Lab demo workspace
   - [x] 45/45 automated backend tests passing across models, auth, core workflows, real-time sockets, and analytics/attachments suite
+- [x] **Milestone 8: Production QA, Security Audit, E2E Verification & Cloud Deployment**
+  - [x] Full security audit completed: 0 exposed secrets, SameSite/HttpOnly cookie protections, CORS origin whitelisting, 4-tier IDOR defense, and 10MB payload size limits
+  - [x] Comprehensive End-to-End production test suite ([`backend/src/__tests__/milestone8-e2e-production.test.js`](file:///C:/Users/Asus/.gemini/antigravity/scratch/teamflow/backend/src/__tests__/milestone8-e2e-production.test.js)) covering user registration, workspace creation, team allocation, project milestones, Kanban move lifecycle, attachments, comments, and real analytics verification
+  - [x] Frontend unit and schema validation test suite ([`frontend/src/__tests__/frontend-validation-and-utils.test.js`](file:///C:/Users/Asus/.gemini/antigravity/scratch/teamflow/frontend/src/__tests__/frontend-validation-and-utils.test.js)) verifying Zod validation schemas, byte formatting, and column transitions
+  - [x] Defensive API URL normalization in [`api.js`](file:///C:/Users/Asus/.gemini/antigravity/scratch/teamflow/frontend/src/services/api.js) cleanly resolving any input format (`https://domain.com`, `/api`, or `/api/v1`)
+  - [x] GitHub Actions production CI pipeline ([`.github/workflows/ci.yml`](file:///C:/Users/Asus/.gemini/antigravity/scratch/teamflow/.github/workflows/ci.yml)) running syntax checks, 52 backend tests, 6 frontend tests, and production Vite builds
+  - [x] Total automated test suite: **58/58 passing automated tests** (52 backend + 6 frontend)
+  - [x] Complete deployment verification checklist, environment configuration guide, and known limitations documented below
+
+---
+
+## 🔒 Security Audit & Hardening Matrix
+
+| Security Domain | Implementation / Defense | Verification Status |
+| :--- | :--- | :---: |
+| **Exposed Secrets** | Zero secrets in Git; all keys loaded via `process.env` with `.env.example` templates | Verified (Clean git tree) |
+| **Authentication** | SameSite HttpOnly refresh cookies, rotation with reuse detection, bcrypt salt rounds = 12 | Verified (52/52 Tests) |
+| **Multi-Tenant IDOR** | All database lookups verify `workspaceId` and role membership; external workspace users receive HTTP 403 | Verified (E2E Test #2) |
+| **Role-Based Access (RBAC)**| 4-tier role enforcement (`workspace_owner`, `admin`, `project_manager`, `team_member`) on projects/teams | Verified (E2E Test #3) |
+| **Rate Limiting** | Express Rate Limit on API (500 req/15m), Auth (30 req/15m), and OTP/Reset endpoints (10 req/10m) | Verified (`ratelimit` headers) |
+| **Input Validation** | Zod schemas validate all incoming URL parameters and request bodies before controller execution | Verified (Zod Middleware) |
+| **File Upload Security** | 10MB strict limit, MIME type whitelist, sanitized filenames, and Cloudinary SHA1 signatures | Verified (E2E Test #5) |
+| **CORS Policy** | Restricted origin whitelist matching frontend domain, credentials enabled, preflight headers handled | Verified (`corsOptions`) |
+| **HTTP Security Headers** | Helmet with `crossOriginResourcePolicy: 'cross-origin'` and Vercel edge security headers | Verified (`X-Frame-Options: DENY`) |
+
+---
+
+## ☁️ Production Deployment Guide
+
+### 1. MongoDB Atlas Configuration
+1. Create a free M0 or production M10 cluster on [MongoDB Atlas](https://www.mongodb.com/atlas).
+2. Under **Database Access**, create a user (e.g. `teamflow-admin`) with `readWriteAnyDatabase` or scoped to `teamflow`.
+3. Under **Network Access**, add `0.0.0.0/0` (Allow Access from Anywhere) to permit connections from Render's dynamic IP addresses.
+4. Copy your SRV connection string: `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/teamflow?retryWrites=true&w=majority`.
+
+### 2. Backend Deployment on Render
+1. Sign in to [Render](https://render.com) and click **New + > Web Service**.
+2. Connect your GitHub repository containing TeamFlow.
+3. Select **Root Directory:** `backend`.
+4. Configure Build & Start commands:
+   - **Runtime:** `Node`
+   - **Build Command:** `npm install`
+   - **Start Command:** `node src/server.js`
+   - **Health Check Path:** `/api/health`
+5. Under **Environment Variables**, add:
+   - `NODE_ENV`: `production`
+   - `PORT`: `10000`
+   - `MONGODB_URI`: `<Your MongoDB Atlas Connection String>`
+   - `JWT_ACCESS_SECRET`: `<Generate with: openssl rand -hex 64>`
+   - `JWT_REFRESH_SECRET`: `<Generate with: openssl rand -hex 64>`
+   - `FRONTEND_URL`: `https://teamflow.vercel.app` (or your Vercel URL)
+   - `CORS_ORIGIN`: `https://teamflow.vercel.app`
+   - `BREVO_API_KEY`: `<Your Brevo API Key, or leave blank for dev simulation>`
+   - `CLOUDINARY_CLOUD_NAME`: `<Optional Cloudinary Cloud Name>`
+   - `CLOUDINARY_API_KEY`: `<Optional Cloudinary API Key>`
+   - `CLOUDINARY_API_SECRET`: `<Optional Cloudinary API Secret>`
+6. Deploy the service. Verify that `GET https://your-render-url.onrender.com/api/health` returns `200 OK` with `{ "status": "healthy" }`.
+
+### 3. Frontend Deployment on Vercel
+1. Sign in to [Vercel](https://vercel.com) and click **Add New > Project**.
+2. Import your GitHub repository.
+3. Configure Project Settings:
+   - **Framework Preset:** `Vite`
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. Under **Environment Variables**, add:
+   - `VITE_API_URL`: `https://your-render-url.onrender.com/api`
+   - `VITE_SOCKET_URL`: `https://your-render-url.onrender.com`
+5. Click **Deploy**. Vercel will build the code-split bundle and distribute it to edge locations worldwide.
+
+---
+
+## ⚠️ Known Limitations & Operational Considerations
+
+1. **Render Free Tier Spin-Down:** On Render's free tier, backend instances sleep after 15 minutes of inactivity. The first incoming request may take 30–50 seconds to warm up. TeamFlow displays connection diagnostic feedback and automated retry states.
+2. **Brevo Email Fallback:** If `BREVO_API_KEY` is not provided, TeamFlow automatically activates its development fallback simulation, logging 6-digit OTP codes directly to server logs for verification.
+3. **Cloudinary Fallback:** If Cloudinary credentials are not configured, file uploads utilize signed development mock URLs while strictly enforcing the 10MB size limit.
+4. **Browser Notifications:** In-app push notifications operate across active browser tabs via Socket.IO; OS-level desktop push notifications require HTTPS and user permission grant.

@@ -64,9 +64,9 @@ const globalLimiter = rateLimit({
 
 app.use(globalLimiter);
 
-// Body and Cookie Parsing
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// Body and Cookie Parsing (15mb to comfortably accommodate 10MB attachments with base64 overhead)
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use(cookieParser(config.cookieSecret));
 
 // Health & Readiness Probes
