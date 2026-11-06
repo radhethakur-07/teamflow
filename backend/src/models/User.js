@@ -87,6 +87,13 @@ const userSchema = new mongoose.Schema(
       maxlength: [500, 'Bio cannot exceed 500 characters'],
       default: '',
     },
+    preferences: {
+      emailTaskAssigned: { type: Boolean, default: true },
+      emailComments: { type: Boolean, default: true },
+      emailDueSoon: { type: Boolean, default: true },
+      inAppNotifications: { type: Boolean, default: true },
+      theme: { type: String, enum: ['warm', 'light', 'terracotta'], default: 'warm' },
+    },
   },
   {
     timestamps: true,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Plus, 
@@ -15,11 +15,19 @@ import {
   CheckCircle2,
   Trash2,
   Clock,
-  Layers
+  Layers,
+  Paperclip,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { useSocket } from '../context/SocketContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import taskService from '../services/taskService.js';
+import attachmentService from '../services/attachmentService.js';
 import TaskCard from '../components/domain/TaskCard.jsx';
 import Drawer from '../components/common/Drawer.jsx';
 import Button from '../components/common/Button.jsx';
@@ -31,6 +39,9 @@ import NewTaskModal from '../components/domain/NewTaskModal.jsx';
 
 export const KanbanBoardPage = () => {
   const [searchParams] = useSearchParams();
+  const toast = useToast();
+  const fileInputRef = useRef(null);
+
   const { 
     projects, 
     activeProject, 
@@ -55,6 +66,11 @@ export const KanbanBoardPage = () => {
   const [taskComments, setTaskComments] = useState([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isPostingComment, setIsPostingComment] = useState(false);
+
+  // Attachment state
+  const [attachments, setAttachments] = useState([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
   // Sync active project from query param if provided
   useEffect(() => {
@@ -96,15 +112,19 @@ export const KanbanBoardPage = () => {
     };
   }, [socket, selectedTask]);
 
-  // Load comments when selected task opens
+  // Load comments & attachments when selected task opens
   useEffect(() => {
+    if (!selectedTask) {
+      setTaskComments([]);
+      setAttachments([]);
+      return;
+    }
+
+    const tId = selectedTask._id || selectedTask.id;
+    const wsId = workspace?._id || workspace?.id;
+
+    // Load comments
     const loadComments = async () => {
-      if (!selectedTask) {
-        setTaskComments([]);
-        return;
-      }
-      const tId = selectedTask._id || selectedTask.id;
-      const wsId = workspace?._id || workspace?.id;
       setIsLoadingComments(true);
       try {
         const comments = await taskService.getComments(tId, wsId);
@@ -116,7 +136,21 @@ export const KanbanBoardPage = () => {
       }
     };
 
+    // Load attachments
+    const loadAttachments = async () => {
+      setIsLoadingAttachments(true);
+      try {
+        const data = await attachmentService.getTaskAttachments(tId);
+        setAttachments(data || []);
+      } catch (err) {
+        console.error('Failed to load task attachments', err);
+      } finally {
+        setIsLoadingAttachments(false);
+      }
+    };
+
     loadComments();
+    loadAttachments();
   }, [selectedTask, workspace]);
 
   const columns = [
@@ -152,6 +186,7 @@ export const KanbanBoardPage = () => {
       setCommentText('');
     } catch (err) {
       console.error('Failed to post comment', err);
+      toast.error('Failed to post comment.');
     } finally {
       setIsPostingComment(false);
     }
@@ -171,6 +206,7 @@ export const KanbanBoardPage = () => {
       setNewChecklistText('');
     } catch (err) {
       console.error('Failed to add checklist item', err);
+      toast.error('Failed to add subtask.');
     }
   };
 
@@ -191,6 +227,58 @@ export const KanbanBoardPage = () => {
     const tId = selectedTask._id || selectedTask.id;
     await deleteTask(tId);
     setSelectedTask(null);
+    toast.success('Task removed.');
+  };
+
+  // Attachment upload handler
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTask) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File exceeds maximum upload limit of 10MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const tId = selectedTask._id || selectedTask.id;
+    setIsUploadingAttachment(true);
+
+    try {
+      const newAttachment = await attachmentService.uploadFileToTask(tId, file);
+      setAttachments((prev) => [newAttachment, ...prev]);
+      toast.success(`Attached "${file.name}" successfully!`);
+    } catch (err) {
+      console.error('Attachment upload failed:', err);
+      toast.error(err.message || 'File upload failed.');
+    } finally {
+      setIsUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Attachment delete handler
+  const handleDeleteAttachment = async (attachmentId) => {
+    if (!selectedTask) return;
+    const tId = selectedTask._id || selectedTask.id;
+
+    try {
+      await attachmentService.deleteAttachment(tId, attachmentId);
+      setAttachments((prev) => prev.filter((a) => (a._id || a.id) !== attachmentId));
+      toast.success('Attachment deleted.');
+    } catch (err) {
+      console.error('Delete attachment failed:', err);
+      toast.error(err.message || 'Failed to delete attachment.');
+    }
+  };
+
+  // Helper: Format bytes
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
   return (
@@ -300,52 +388,43 @@ export const KanbanBoardPage = () => {
                       className="w-2.5 h-2.5 rounded-full"
                       style={{ backgroundColor: column.color }}
                     />
-                    <h3 className="font-heading font-bold text-sm text-warm-900">
+                    <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-warm-900">
                       {column.title}
                     </h3>
                   </div>
 
-                  <span className="text-xs font-bold text-warm-600 bg-warm-200 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-warm-600 bg-warm-200/80 px-2 py-0.5 rounded-full">
                     {colTasks.length}
                   </span>
                 </div>
 
-                {/* Card Stack */}
-                <div className="space-y-3">
-                  {colTasks.map((task) => {
-                    const taskId = task._id || task.id;
-                    return (
-                      <div
-                        key={taskId}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', taskId);
-                          e.dataTransfer.effectAllowed = 'move';
-                        }}
-                      >
-                        <TaskCard
-                          task={task}
-                          columns={columns}
-                          onClick={() => setSelectedTask(task)}
-                          onMove={(tId, targetColKey) => moveTask(tId, targetColKey)}
-                        />
-                      </div>
-                    );
-                  })}
+                {/* Task Cards Column Droppable Area */}
+                <div className="space-y-3 min-h-[120px]">
+                  {colTasks.map((task) => (
+                    <TaskCard
+                      key={task._id || task.id}
+                      task={task}
+                      onClick={() => setSelectedTask(task)}
+                      onMove={(col) => moveTask(task._id || task.id, col)}
+                    />
+                  ))}
 
                   {colTasks.length === 0 && (
-                    <div className="py-12 border-2 border-dashed border-warm-200/70 rounded-xl text-center text-xs text-warm-400">
-                      Drag tasks here
+                    <div className="py-12 border-2 border-dashed border-warm-200/80 rounded-xl text-center flex flex-col items-center justify-center gap-1.5 text-warm-400">
+                      <span className="text-xs font-medium">Empty column</span>
+                      <span className="text-[11px] text-warm-400">
+                        Drop tasks here to update stage
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Quick Column Add Button */}
+              {/* Bottom Quick-Add Button */}
               <button
                 type="button"
                 onClick={() => setIsNewTaskModalOpen(true)}
-                className="w-full py-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-warm-500 hover:text-warm-900 hover:bg-warm-200/50 rounded-xl transition-colors border border-dashed border-warm-300/60"
+                className="w-full py-2 px-3 border border-dashed border-warm-300 rounded-xl text-xs font-bold text-warm-500 hover:text-warm-800 hover:border-warm-400 hover:bg-white/80 transition-all flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Card</span>
@@ -434,6 +513,107 @@ export const KanbanBoardPage = () => {
                   Add
                 </Button>
               </form>
+            </div>
+
+            {/* Attachments Section */}
+            <div className="space-y-3 pt-3 border-t border-warm-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-warm-500" />
+                  <h4 className="text-xs font-heading font-bold text-warm-900 uppercase tracking-wider">
+                    Attachments ({attachments.length})
+                  </h4>
+                </div>
+
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="task-file-upload"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={Upload}
+                    onClick={() => fileInputRef.current?.click()}
+                    isLoading={isUploadingAttachment}
+                  >
+                    Upload File
+                  </Button>
+                </div>
+              </div>
+
+              {/* Attachments List */}
+              <div className="space-y-2">
+                {attachments.map((att) => {
+                  const isImg = att.mimeType?.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(att.fileName);
+                  const attId = att._id || att.id;
+
+                  return (
+                    <div
+                      key={attId}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-warm-50 border border-warm-200 hover:bg-warm-100/60 transition-colors text-xs"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {isImg ? (
+                          <img
+                            src={att.fileUrl}
+                            alt={att.fileName}
+                            className="w-9 h-9 object-cover rounded-lg border border-warm-200 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-warm-200 text-warm-600 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                        )}
+
+                        <div className="overflow-hidden">
+                          <a
+                            href={att.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-warm-900 hover:text-terracotta-600 truncate block transition-colors"
+                            title={att.fileName}
+                          >
+                            {att.fileName}
+                          </a>
+                          <span className="text-[11px] text-warm-400">
+                            {formatFileSize(att.fileSize)} • {new Date(att.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                        <a
+                          href={att.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-warm-500 hover:text-warm-900 rounded-lg hover:bg-warm-200 transition-colors"
+                          title="Open or download attachment"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAttachment(attId)}
+                          className="p-1.5 text-warm-400 hover:text-terracotta-600 rounded-lg hover:bg-warm-200 transition-colors"
+                          title="Delete attachment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {attachments.length === 0 && !isLoadingAttachments && (
+                  <p className="text-xs text-warm-400 italic py-2">
+                    No files attached yet. Upload deliverables or reference assets (up to 10MB).
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Real Comments Feed */}

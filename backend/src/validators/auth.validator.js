@@ -64,6 +64,15 @@ export const updateProfileSchema = z.object({
     avatarUrl: z.string().url().optional().or(z.literal('')),
     jobTitle: z.string().max(100).optional(),
     bio: z.string().max(500).optional(),
+    preferences: z
+      .object({
+        emailTaskAssigned: z.boolean().optional(),
+        emailComments: z.boolean().optional(),
+        emailDueSoon: z.boolean().optional(),
+        inAppNotifications: z.boolean().optional(),
+        theme: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 

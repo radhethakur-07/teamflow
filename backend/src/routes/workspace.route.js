@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as workspaceController from '../controllers/workspace.controller.js';
+import * as analyticsController from '../controllers/analytics.controller.js';
 import { authenticateJWT } from '../middlewares/auth.middleware.js';
 import { requireWorkspaceRole } from '../middlewares/rbac.middleware.js';
 import { validateRequest } from '../middlewares/validate.middleware.js';
@@ -58,6 +59,14 @@ router.get(
   authenticateJWT,
   requireWorkspaceRole(),
   workspaceController.getWorkspaceActivities
+);
+
+// Workspace analytics
+router.get(
+  '/:workspaceId/analytics',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  analyticsController.getWorkspaceAnalytics
 );
 
 export default router;

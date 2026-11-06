@@ -7,6 +7,8 @@ import projectRouter from './project.route.js';
 import taskRouter from './task.route.js';
 import messageRouter from './message.route.js';
 import notificationRouter from './notification.route.js';
+import { authenticateJWT } from '../middlewares/auth.middleware.js';
+import * as attachmentController from '../controllers/attachment.controller.js';
 
 const apiRouter = Router();
 
@@ -35,5 +37,9 @@ apiRouter.use('/tasks', taskRouter);
 // Real-Time Chat Messages & Notifications
 apiRouter.use('/workspaces/:workspaceId/messages', messageRouter);
 apiRouter.use('/notifications', notificationRouter);
+
+// Cloudinary / File uploads
+apiRouter.get('/upload/signature', authenticateJWT, attachmentController.getUploadSignature);
+apiRouter.post('/upload', authenticateJWT, attachmentController.uploadAsset);
 
 export default apiRouter;

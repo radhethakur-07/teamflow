@@ -43,6 +43,8 @@ const activityLogSchema = new mongoose.Schema(
         'TASK_COMPLETED',
         'TASK_DELETED',
         'COMMENT_ADDED',
+        'ATTACHMENT_ADDED',
+        'ATTACHMENT_DELETED',
       ],
       index: true,
     },

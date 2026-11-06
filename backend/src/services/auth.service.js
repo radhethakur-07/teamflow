@@ -578,7 +578,7 @@ export const getUserProfile = async (userId) => {
  * Updates current user profile information
  */
 export const updateUserProfile = async (userId, updateData) => {
-  const allowed = ['name', 'avatarUrl', 'jobTitle', 'bio'];
+  const allowed = ['name', 'avatarUrl', 'jobTitle', 'bio', 'preferences'];
   const sanitized = {};
   for (const key of allowed) {
     if (updateData[key] !== undefined) sanitized[key] = updateData[key];

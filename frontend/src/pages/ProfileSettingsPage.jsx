@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Upload, Save, Check } from 'lucide-react';
+import { User, Mail, Lock, Upload, Save, Check, Bell, BellRing, Palette } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import authService from '../services/authService.js';
@@ -8,6 +8,7 @@ import Input from '../components/common/Input.jsx';
 import Textarea from '../components/common/Textarea.jsx';
 import Button from '../components/common/Button.jsx';
 import Card from '../components/common/Card.jsx';
+import { Checkbox } from '../components/common/Checkbox.jsx';
 
 export const ProfileSettingsPage = () => {
   const { user } = useAuth();
@@ -18,6 +19,13 @@ export const ProfileSettingsPage = () => {
   const [jobTitle, setJobTitle] = useState(user?.jobTitle || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
+
+  // Notification Preferences
+  const [emailTaskAssigned, setEmailTaskAssigned] = useState(user?.preferences?.emailTaskAssigned ?? true);
+  const [emailComments, setEmailComments] = useState(user?.preferences?.emailComments ?? true);
+  const [emailDueSoon, setEmailDueSoon] = useState(user?.preferences?.emailDueSoon ?? true);
+  const [inAppNotifications, setInAppNotifications] = useState(user?.preferences?.inAppNotifications ?? true);
+  const [theme, setTheme] = useState(user?.preferences?.theme || 'warm');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -31,6 +39,14 @@ export const ProfileSettingsPage = () => {
       setJobTitle(user.jobTitle || '');
       setBio(user.bio || '');
       setAvatarUrl(user.avatarUrl || '');
+
+      if (user.preferences) {
+        setEmailTaskAssigned(user.preferences.emailTaskAssigned ?? true);
+        setEmailComments(user.preferences.emailComments ?? true);
+        setEmailDueSoon(user.preferences.emailDueSoon ?? true);
+        setInAppNotifications(user.preferences.inAppNotifications ?? true);
+        setTheme(user.preferences.theme || 'warm');
+      }
     }
   }, [user]);
 
@@ -44,8 +60,15 @@ export const ProfileSettingsPage = () => {
         jobTitle: jobTitle.trim(),
         bio: bio.trim(),
         avatarUrl: avatarUrl.trim(),
+        preferences: {
+          emailTaskAssigned,
+          emailComments,
+          emailDueSoon,
+          inAppNotifications,
+          theme,
+        },
       });
-      toast.success('Profile settings updated successfully!');
+      toast.success('Profile settings and preferences saved successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile.');
     } finally {
@@ -80,10 +103,10 @@ export const ProfileSettingsPage = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-heading font-extrabold text-warm-900 tracking-tight">
-          Profile Settings
+          Profile & Preferences
         </h1>
         <p className="text-xs text-warm-500">
-          Manage your personal account details, biography, and security credentials.
+          Manage your personal account details, notification channels, and security credentials.
         </p>
       </div>
 
@@ -151,6 +174,81 @@ export const ProfileSettingsPage = () => {
             placeholder="Share what initiatives you are leading..."
             rows={3}
           />
+        </Card>
+
+        {/* Notification Preferences */}
+        <Card padding="md" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <BellRing className="w-4 h-4 text-terracotta-600" />
+            <h3 className="font-heading font-bold text-sm text-warm-900">
+              Notification Preferences
+            </h3>
+          </div>
+          <p className="text-xs text-warm-500">
+            Choose what alerts and digest emails you receive from TeamFlow.
+          </p>
+
+          <div className="space-y-3 pt-1">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-warm-50/70 border border-warm-100">
+              <Checkbox
+                checked={emailTaskAssigned}
+                onChange={(e) => setEmailTaskAssigned(e.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <label className="text-xs font-bold text-warm-900 block cursor-pointer">
+                  Task Assignment Emails
+                </label>
+                <p className="text-[11px] text-warm-500">
+                  Notify me when a team member assigns me to a new task.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-warm-50/70 border border-warm-100">
+              <Checkbox
+                checked={emailComments}
+                onChange={(e) => setEmailComments(e.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <label className="text-xs font-bold text-warm-900 block cursor-pointer">
+                  Discussion & Comment Notifications
+                </label>
+                <p className="text-[11px] text-warm-500">
+                  Receive email alerts when someone comments on my tasks.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-warm-50/70 border border-warm-100">
+              <Checkbox
+                checked={emailDueSoon}
+                onChange={(e) => setEmailDueSoon(e.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <label className="text-xs font-bold text-warm-900 block cursor-pointer">
+                  Upcoming Deadline Reminders
+                </label>
+                <p className="text-[11px] text-warm-500">
+                  Send a reminder 24 hours before a scheduled deliverable is due.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-warm-50/70 border border-warm-100">
+              <Checkbox
+                checked={inAppNotifications}
+                onChange={(e) => setInAppNotifications(e.target.checked)}
+              />
+              <div className="space-y-0.5">
+                <label className="text-xs font-bold text-warm-900 block cursor-pointer">
+                  In-App Push & Toast Alerts
+                </label>
+                <p className="text-[11px] text-warm-500">
+                  Show real-time notifications inside TeamFlow when active.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="pt-3 border-t border-warm-100 flex justify-end">
             <Button
@@ -160,7 +258,7 @@ export const ProfileSettingsPage = () => {
               leftIcon={Save}
               isLoading={isLoading}
             >
-              Save Profile
+              Save Profile & Preferences
             </Button>
           </div>
         </Card>

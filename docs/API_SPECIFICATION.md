@@ -147,6 +147,24 @@ All API endpoints follow a predictable JSON response structure.
 | `GET` | `/api/health` | Liveness probe: returns server uptime, memory usage, node version | No |
 | `GET` | `/api/health/ready` | Readiness probe: checks active MongoDB connection state (200/503) | No |
 
+### 2.10 Workspace Real Analytics Engine
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/v1/workspaces/:workspaceId/analytics?timeframe=7d\|30d\|90d\|all` | Returns real database aggregations: task breakdown, completion rate, overdue tasks, project completion %, team workload, and activity velocity | Member |
+
+### 2.11 Task Attachments & File Management
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/v1/tasks/:taskId/attachments` | Retrieves list of all file attachments uploaded for task | Member |
+| `POST` | `/api/v1/tasks/:taskId/attachments` | Creates attachment record with fileName, fileUrl, fileSize, mimeType (max 10MB) | Member |
+| `DELETE` | `/api/v1/tasks/:taskId/attachments/:attachmentId` | Deletes attachment (requires task author or workspace admin) | Member/Admin |
+
+### 2.12 Cloudinary Direct Upload & Asset Relay
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/v1/upload/signature?folder=teamflow/...` | Generates signed Cloudinary SHA1 signature for direct client upload (with dev simulation fallback) | User |
+| `POST` | `/api/v1/upload` | Server-side upload handler (accepts base64/data URI with Cloudinary relay or fallback) | User |
+
 ---
 
 ## 3. Real-Time Socket.IO Protocol Specification

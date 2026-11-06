@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as taskController from '../controllers/task.controller.js';
 import * as commentController from '../controllers/comment.controller.js';
+import * as attachmentController from '../controllers/attachment.controller.js';
 import { authenticateJWT } from '../middlewares/auth.middleware.js';
 import { requireWorkspaceRole } from '../middlewares/rbac.middleware.js';
 import { validateRequest } from '../middlewares/validate.middleware.js';
@@ -95,6 +96,28 @@ router.delete(
   authenticateJWT,
   requireWorkspaceRole(),
   commentController.deleteComment
+);
+
+// Task attachments & file management
+router.get(
+  '/:taskId/attachments',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  attachmentController.getTaskAttachments
+);
+
+router.post(
+  '/:taskId/attachments',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  attachmentController.createTaskAttachment
+);
+
+router.delete(
+  '/:taskId/attachments/:attachmentId',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  attachmentController.deleteAttachment
 );
 
 export default router;
