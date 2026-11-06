@@ -10,6 +10,7 @@ TeamFlow is a production-quality, multi-tenant collaboration platform designed f
 
 ### Core Architecture Pillars:
 - **Monorepo Structure:** Decoupled between `/frontend` (React + Vite), `/backend` (Express + Socket.IO), and `/docs` (Architecture & Specs).
+- **Modular Express Backend:** Layered Controller-Service-Model architecture with Zod validation, JWT authentication, 4-tier RBAC middleware, and 12 Mongoose collections.
 - **Warm Editorial Visual Foundation:** 15 production-grade pages built with **Plus Jakarta Sans** (headings) and **DM Sans** (body), Warm Ivory `#F8F5EF`, Terracotta `#E98269`, Sage `#91A88C`, Mustard `#E9C995`, Lavender `#C9B8D9`, and Warm Charcoal `#554B43`.
 - **Zero-Friction Real-Time:** Fluid drag-and-drop Kanban boards with instant multi-user synchronization powered by Socket.IO rooms.
 - **Granular Multi-Tenancy:** Workspace-isolated projects, role-based access control (RBAC), and secure tokenized invitations.
@@ -20,14 +21,12 @@ TeamFlow is a production-quality, multi-tenant collaboration platform designed f
 
 ## 📚 Architectural & Technical Documentation
 
-The complete architectural foundation developed in **Milestone 0** is documented across 8 comprehensive specifications:
-
 | Document | Description |
 | :--- | :--- |
 | **[Product Requirements Document (PRD)](./docs/PRODUCT_REQUIREMENTS.md)** | Product vision, problem statement, user personas, MVP scope, and business metrics. |
 | **[System Architecture](./docs/SYSTEM_ARCHITECTURE.md)** | C4 container diagrams, layered Express pattern, Vite SPA setup, and security architecture. |
-| **[Database Design & ERD](./docs/DATABASE_DESIGN.md)** | MongoDB Atlas schema specifications, Mermaid ERD, indexing strategies, and relations. |
-| **[REST API Specification](./docs/API_SPECIFICATION.md)** | Standard JSON envelopes, endpoints for Auth, Workspaces, Projects, Tasks, and Comments. |
+| **[Database Design & ERD](./docs/DATABASE_DESIGN.md)** | MongoDB Atlas 12 collection schemas, Mermaid ERD, compound index strategies, and relationships. |
+| **[REST API Specification](./docs/API_SPECIFICATION.md)** | RESTful API contracts, Zod schemas, endpoints for Auth, Workspaces, Teams, Projects, and Tasks. |
 | **[User Flows & Interactions](./docs/USER_FLOWS.md)** | Mermaid interaction sequence diagrams for onboarding, task lifecycle, and live sync. |
 | **[Role-Based Access Control (RBAC)](./docs/ROLE_PERMISSIONS.md)** | 4-tier role permission matrix (Owner, Admin, PM, Member) and middleware policy logic. |
 | **[Design System & UI Guidelines](./docs/DESIGN_SYSTEM.md)** | Warm Ivory/Terracotta tokens, typography (Plus Jakarta Sans & DM Sans), and WCAG AA contrast. |
@@ -35,40 +34,27 @@ The complete architectural foundation developed in **Milestone 0** is documented
 
 ---
 
-## 🎨 Visual Identity & Color Palette
+## 🗂️ Backend Modular Architecture
 
-TeamFlow follows an organic, warm editorial palette designed for ergonomic focus and visual clarity:
-
-- **Warm Ivory:** `#F8F5EF` (Canvas Base)
-- **Terracotta:** `#E98269` (Brand Primary & CTAs)
-- **Sage Green:** `#91A88C` (Success, Completed Tasks & Healthy Indicators)
-- **Soft Mustard:** `#E9C995` (In-Progress, Attention & Badges)
-- **Muted Lavender:** `#C9B8D9` (Review States & Secondary Tags)
-- **Warm Charcoal:** `#554B43` (Primary Headings & High-Contrast Typography)
-- **Typography Fonts:** **Plus Jakarta Sans** (Headings) and **DM Sans** (Body & Controls)
-
----
-
-## 🗺️ Application Page Hierarchy & Routes
-
-| Route | Page | Description |
-| :--- | :--- | :--- |
-| `/` | **Landing Page** | Editorial showcase with value props, design philosophy, and live comparison. |
-| `/login` | **Login Page** | Secure authentication with email, password, and remember-me toggles. |
-| `/register` | **Registration Page** | Account creation with real-time password strength meter and terms check. |
-| `/forgot-password` | **Forgot Password Page** | Password recovery request form with instant confirmation feedback. |
-| `/onboarding` | **Workspace Onboarding** | 3-step setup wizard: Workspace Name, Team Domain, and Colleague Invites. |
-| `/dashboard` | **Main Dashboard** | Executive overview: 4 spacious metrics, active projects, priority tasks, and live activity stream. |
-| `/projects` | **Projects Listing** | Project cards with status filters (All/Active/Archived), search, and "+ New Project" modal. |
-| `/projects/:id` | **Project Details** | Project overview, throughput progress meter, milestone roadmap, and team roster. |
-| `/board` | **Kanban Board** | 4-column agile board (To Do, In Progress, In Review, Done) with interactive task detail drawer. |
-| `/my-tasks` | **My Tasks Page** | Daily execution list with interactive completion checkboxes and priority pills. |
-| `/members` | **Team Members Page** | Member directory table with 4-tier RBAC badges and "+ Invite Teammate" modal. |
-| `/calendar` | **Calendar Page** | Monthly schedule view with task deadlines plotted by project colors. |
-| `/notifications` | **Notifications Center** | In-app alerts filtered by All, Unread, Mentions, and System with deep links. |
-| `/settings/profile` | **Profile Settings** | Avatar upload simulation, name, title, bio, and password change. |
-| `/settings/workspace` | **Workspace Settings** | Workspace name, URL slug, plan quotas, and Danger Zone with confirmation dialog. |
-| `/status` | **Infrastructure Diagnostic** | Real-time frontend-to-backend connectivity diagnostic and round-trip ping. |
+```
+backend/
+├── src/
+│   ├── config/                       # Database pooling (db.js) & validated env (env.js)
+│   ├── controllers/                  # Request handling: auth, workspace, team, project, task
+│   ├── middlewares/                  # authenticateJWT, requireWorkspaceRole, validateRequest, errorHandler
+│   ├── models/                       # 12 Mongoose collections (User, Workspace, Member, Team, Project, Task, etc.)
+│   ├── routes/                       # Express router modules: /auth, /workspaces, /teams, /projects, /tasks
+│   ├── services/                     # Business domain logic & database mutations
+│   ├── utils/                        # apiResponse, asyncHandler, jwt, password (bcrypt)
+│   ├── validators/                   # Zod validation schemas for all incoming payloads
+│   ├── __tests__/                    # Node.js automated test suites (models.test.js, api.test.js, health.test.js)
+│   ├── app.js                        # Express app with helmet, cors, morgan, rateLimit
+│   └── server.js                     # HTTP + Socket.IO server & graceful shutdown
+├── render.yaml                       # Render Web Service blueprint configuration
+├── .env.example
+├── .gitignore
+└── package.json
+```
 
 ---
 
@@ -92,10 +78,12 @@ npm run dev:backend
 npm run dev:frontend
 ```
 - Open [http://localhost:5173](http://localhost:5173) in your browser.
+- Query backend health at [http://localhost:5000/api/health](http://localhost:5000/api/health).
+- Query database readiness probe at [http://localhost:5000/api/health/ready](http://localhost:5000/api/health/ready).
 
 ### 4. Running Tests & Build Checks
 ```bash
-# Run backend automated unit tests
+# Run complete backend automated test suite (models & REST APIs)
 npm run test:backend
 
 # Run production Vite build check
@@ -109,14 +97,13 @@ npm run build:frontend
 - [x] **Milestone 0: Product Architecture, Design System & System Specifications**
 - [x] **Milestone 1: Monorepo Scaffolding, Backend Foundation & Connectivity**
 - [x] **Milestone 2: Frontend Visual Foundation & Complete 15-Page Experience**
-  - [x] Warm editorial design system tokens (Ivory `#F8F5EF`, Terracotta `#E98269`, Sage `#91A88C`, Charcoal `#554B43`)
-  - [x] Plus Jakarta Sans and DM Sans typography scale
-  - [x] Complete 15-page responsive frontend architecture
-  - [x] Global layout shell (`Sidebar`, `Header`, `SearchModal` with `⌘K`, `AppLayout`)
-  - [x] Reusable component suite (`Button`, `Badge`, `Card`, `Modal`, `Drawer`, `Dropdown`, `Tabs`, `Breadcrumbs`, `ConfirmDialog`, `Avatar`, `EmptyState`, `SkeletonLoader`)
-  - [x] Interactive Kanban board with task detail drawer, checklists, and discussions
-  - [x] Toast notification system (`ToastContext`) and realistic mock state (`AppContext`)
-  - [x] Verified production build and 16 route responses (`HTTP 200 OK`)
-- [ ] **Milestone 3: Backend Authentication, Workspace Engine & RBAC Implementation**
+- [x] **Milestone 3: Modular & Scalable Express Backend & 12 Mongoose Collections**
+  - [x] 12 Mongoose models with ObjectId refs, compound indexes, and timestamps
+  - [x] Zod request validation middleware (`validateRequest`)
+  - [x] Secure JWT authentication with short-lived access and refresh rotation
+  - [x] 4-tier RBAC authorization middleware (`requireWorkspaceRole`)
+  - [x] REST API modules for Users, Workspaces, Teams, Projects, and Tasks
+  - [x] Health (`/api/health`) and readiness (`/api/health/ready`) probes
+  - [x] Complete automated test suite (100% pass across models and REST endpoints)
 - [ ] **Milestone 4: Real-Time Sockets, Projects & Live Kanban Board Synchronization**
 - [ ] **Milestone 5: Production Deployment, Hardening & End-to-End Verification**

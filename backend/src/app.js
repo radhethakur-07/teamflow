@@ -12,18 +12,17 @@ import { errorHandler } from './middlewares/errorHandler.js';
 const app = express();
 
 // Security Headers
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS Configuration
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow server-to-server or curl/Postman requests with no origin
     if (!origin) return callback(null, true);
-    
-    // Check against allowed origins list or local network during development
-    const allowed = config.cors.allowedOrigins.some(allowedOrigin => {
+    const allowed = config.cors.allowedOrigins.some((allowedOrigin) => {
       return origin === allowedOrigin || allowedOrigin === '*';
     });
 
@@ -35,7 +34,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-workspace-id'],
 };
 
 app.use(cors(corsOptions));
@@ -49,17 +48,17 @@ if (!config.isProduction) {
 
 // Global Rate Limiting
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per window
+  windowMs: 15 * 60 * 1000,
+  max: 500, // 500 requests per 15 minutes window
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
     error: {
       code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests from this IP address. Please try again after 15 minutes.'
-    }
-  }
+      message: 'Too many requests from this IP address. Please try again after 15 minutes.',
+    },
+  },
 });
 
 app.use(globalLimiter);
@@ -68,11 +67,13 @@ app.use(globalLimiter);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Health Check Direct Mounts
+// Health & Readiness Probes
 app.use('/health', healthRouter);
 app.use('/api/health', healthRouter);
+app.get('/ready', (req, res) => res.redirect('/api/health/ready'));
+app.get('/api/ready', (req, res) => res.redirect('/api/health/ready'));
 
-// API Versioned Routes
+// Versioned API Routes (/api/v1/...)
 app.use('/api/v1', apiRouter);
 
 // Catch-all 404 handler
