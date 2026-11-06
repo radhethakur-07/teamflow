@@ -8,13 +8,14 @@
   }
 
   body {
-    background-color: #FAF8F5;
-    color: #2B2A27;
+    background-color: #F8F5EF;
+    color: #554B43;
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif;
+    color: #2E2722;
   }
 }
 
@@ -25,14 +26,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #F4EFEA;
+  background: #F2EDE4;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D8D3CD;
+  background: #D2C7B9;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #99958F;
+  background: #9C8E80;
 }

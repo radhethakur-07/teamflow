@@ -6,10 +6,11 @@
 
 ## 🌟 Executive Overview
 
-TeamFlow is a production-quality, multi-tenant collaboration platform designed for high-velocity teams. Eschewing generic, cold blue dashboards and gloomy dark-mode templates, TeamFlow introduces a **warm, tactile editorial visual identity** (warm ivory, terracotta, sage green, and warm charcoal) paired with **sub-100ms real-time WebSocket synchronization**.
+TeamFlow is a production-quality, multi-tenant collaboration platform designed for high-velocity teams. Eschewing generic, cold blue dashboards and gloomy dark-mode templates, TeamFlow introduces a **warm, tactile editorial visual identity** (warm ivory, terracotta, sage green, mustard, lavender, and warm charcoal) paired with **sub-100ms real-time WebSocket synchronization**.
 
 ### Core Architecture Pillars:
-- **Monorepo Structure:** Clean decoupling between `/frontend` (React + Vite), `/backend` (Express + Socket.IO), and `/docs` (Architecture & Specs).
+- **Monorepo Structure:** Decoupled between `/frontend` (React + Vite), `/backend` (Express + Socket.IO), and `/docs` (Architecture & Specs).
+- **Warm Editorial Visual Foundation:** 15 production-grade pages built with **Plus Jakarta Sans** (headings) and **DM Sans** (body), Warm Ivory `#F8F5EF`, Terracotta `#E98269`, Sage `#91A88C`, Mustard `#E9C995`, Lavender `#C9B8D9`, and Warm Charcoal `#554B43`.
 - **Zero-Friction Real-Time:** Fluid drag-and-drop Kanban boards with instant multi-user synchronization powered by Socket.IO rooms.
 - **Granular Multi-Tenancy:** Workspace-isolated projects, role-based access control (RBAC), and secure tokenized invitations.
 - **Production DevOps:** Continuous deployment on **Vercel** (Frontend SPA edge network) and **Render** (Backend API & WebSockets), backed by **MongoDB Atlas**.
@@ -36,67 +37,38 @@ The complete architectural foundation developed in **Milestone 0** is documented
 
 ## 🎨 Visual Identity & Color Palette
 
-TeamFlow follows a warm, tactile, editorial palette designed for ergonomic focus and visual clarity:
+TeamFlow follows an organic, warm editorial palette designed for ergonomic focus and visual clarity:
 
-- **Canvas Background:** Warm Ivory (`#FAF8F5`, `#F4EFEA`)
-- **Primary Accent / Brand:** Terracotta (`#C85A32`, `#9F4120`)
-- **Success & Completion:** Sage Green (`#588157`, `#E8EFE9`)
-- **Warnings & In-Progress:** Soft Mustard (`#D4A373`, `#FDF6ED`)
-- **Review & Secondary:** Muted Lavender (`#8F819E`, `#F0EDF5`)
-- **Primary Typography:** Warm Charcoal (`#2B2A27`)
+- **Warm Ivory:** `#F8F5EF` (Canvas Base)
+- **Terracotta:** `#E98269` (Brand Primary & CTAs)
+- **Sage Green:** `#91A88C` (Success, Completed Tasks & Healthy Indicators)
+- **Soft Mustard:** `#E9C995` (In-Progress, Attention & Badges)
+- **Muted Lavender:** `#C9B8D9` (Review States & Secondary Tags)
+- **Warm Charcoal:** `#554B43` (Primary Headings & High-Contrast Typography)
 - **Typography Fonts:** **Plus Jakarta Sans** (Headings) and **DM Sans** (Body & Controls)
 
 ---
 
-## 🗂️ Monorepo Directory Hierarchy
+## 🗺️ Application Page Hierarchy & Routes
 
-```
-teamflow/
-├── .github/                          # Continuous integration workflows
-│   └── workflows/
-│       └── ci.yml                    # Automated build, syntax, and test checks
-├── .gitignore                        # Global ignore (secrets, build outputs, node_modules)
-├── package.json                      # Monorepo orchestration scripts
-├── README.md                         # Project overview, quickstart & milestone tracking
-├── docs/                             # Complete technical and architectural specifications
-│   ├── PRODUCT_REQUIREMENTS.md
-│   ├── SYSTEM_ARCHITECTURE.md
-│   ├── DATABASE_DESIGN.md
-│   ├── API_SPECIFICATION.md
-│   ├── USER_FLOWS.md
-│   ├── ROLE_PERMISSIONS.md
-│   ├── DESIGN_SYSTEM.md
-│   └── DEPLOYMENT_PLAN.md
-├── backend/                          # Node.js + Express + Socket.IO API
-│   ├── src/
-│   │   ├── config/                   # Database (db.js) & environment (env.js)
-│   │   ├── middlewares/              # errorHandler.js & notFound.js
-│   │   ├── routes/                   # health.route.js & index.js
-│   │   ├── __tests__/                # Automated node:test suites (health.test.js)
-│   │   ├── app.js                    # Express app with helmet, cors, morgan, rateLimit
-│   │   └── server.js                 # HTTP + Socket.IO server & graceful shutdown
-│   ├── render.yaml                   # Render Web Service deployment blueprint
-│   ├── .env.example                  # Environment template
-│   ├── .gitignore
-│   └── package.json
-└── frontend/                         # React 18 + Vite SPA
-    ├── src/
-    │   ├── components/common/        # Button.jsx, Badge.jsx, Card.jsx
-    │   ├── pages/                    # ConnectionTestPage.jsx (live diagnostic console)
-    │   ├── services/                 # api.js (Axios) & healthService.js
-    │   ├── store/                    # Redux Toolkit store & systemSlice.js
-    │   ├── utils/                    # cn.js (twMerge + clsx)
-    │   ├── index.css                 # Tailwind directives & Warm Ivory base styles
-    │   ├── App.jsx                   # React Router routing
-    │   └── main.jsx                  # React DOM mount point & Redux Provider
-    ├── index.html                    # Google Fonts & SVG favicon
-    ├── tailwind.config.js            # Warm editorial design system tokens
-    ├── vercel.json                   # Vercel SPA rewrites & security headers
-    ├── vite.config.js                # Vite config & /api proxy to port 5000
-    ├── .env.example                  # Environment template
-    ├── .gitignore
-    └── package.json
-```
+| Route | Page | Description |
+| :--- | :--- | :--- |
+| `/` | **Landing Page** | Editorial showcase with value props, design philosophy, and live comparison. |
+| `/login` | **Login Page** | Secure authentication with email, password, and remember-me toggles. |
+| `/register` | **Registration Page** | Account creation with real-time password strength meter and terms check. |
+| `/forgot-password` | **Forgot Password Page** | Password recovery request form with instant confirmation feedback. |
+| `/onboarding` | **Workspace Onboarding** | 3-step setup wizard: Workspace Name, Team Domain, and Colleague Invites. |
+| `/dashboard` | **Main Dashboard** | Executive overview: 4 spacious metrics, active projects, priority tasks, and live activity stream. |
+| `/projects` | **Projects Listing** | Project cards with status filters (All/Active/Archived), search, and "+ New Project" modal. |
+| `/projects/:id` | **Project Details** | Project overview, throughput progress meter, milestone roadmap, and team roster. |
+| `/board` | **Kanban Board** | 4-column agile board (To Do, In Progress, In Review, Done) with interactive task detail drawer. |
+| `/my-tasks` | **My Tasks Page** | Daily execution list with interactive completion checkboxes and priority pills. |
+| `/members` | **Team Members Page** | Member directory table with 4-tier RBAC badges and "+ Invite Teammate" modal. |
+| `/calendar` | **Calendar Page** | Monthly schedule view with task deadlines plotted by project colors. |
+| `/notifications` | **Notifications Center** | In-app alerts filtered by All, Unread, Mentions, and System with deep links. |
+| `/settings/profile` | **Profile Settings** | Avatar upload simulation, name, title, bio, and password change. |
+| `/settings/workspace` | **Workspace Settings** | Workspace name, URL slug, plan quotas, and Danger Zone with confirmation dialog. |
+| `/status` | **Infrastructure Diagnostic** | Real-time frontend-to-backend connectivity diagnostic and round-trip ping. |
 
 ---
 
@@ -108,20 +80,10 @@ teamflow/
 
 ### 2. Install Dependencies
 ```bash
-# In the root repository directory
 npm install
 ```
 
-### 3. Environment Setup
-```bash
-# Configure backend environment
-cp backend/.env.example backend/.env
-
-# Configure frontend environment
-cp frontend/.env.example frontend/.env
-```
-
-### 4. Running the Application
+### 3. Running the Application
 ```bash
 # Start backend API (Port 5000)
 npm run dev:backend
@@ -129,10 +91,9 @@ npm run dev:backend
 # In a separate terminal, start frontend SPA (Port 5173)
 npm run dev:frontend
 ```
-- Open [http://localhost:5173](http://localhost:5173) in your browser to view the interactive Infrastructure Diagnostic & Connectivity Console.
-- Access the backend health endpoint directly at [http://localhost:5000/api/health](http://localhost:5000/api/health).
+- Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 5. Running Tests & Build Checks
+### 4. Running Tests & Build Checks
 ```bash
 # Run backend automated unit tests
 npm run test:backend
@@ -146,27 +107,16 @@ npm run build:frontend
 ## 🚀 Milestone Roadmap
 
 - [x] **Milestone 0: Product Architecture, Design System & System Specifications**
-  - [x] Product vision, problem definition & 4 target personas
-  - [x] MVP vs. Post-MVP feature matrix
-  - [x] C4 container diagrams & layered Express pattern
-  - [x] MongoDB Atlas schema definitions & Mermaid ERD
-  - [x] 4-tier RBAC matrix & authorization policies
-  - [x] RESTful API endpoints & standard JSON envelopes
-  - [x] Socket.IO room-based event protocol
-  - [x] Warm editorial design system tokens (Plus Jakarta Sans, DM Sans, Terracotta, Sage)
-  - [x] Production deployment plan (Vercel, Render, Atlas)
 - [x] **Milestone 1: Monorepo Scaffolding, Backend Foundation & Connectivity**
-  - [x] Monorepo directory structure (`/frontend`, `/backend`, `/docs`)
-  - [x] Node.js + Express backend with helmet, cors, morgan, and rate limiting
-  - [x] Standardized error handling and 404 middleware
-  - [x] Live backend health endpoint: `GET /api/health`
-  - [x] React 18 + Vite frontend with Tailwind CSS warm tokens
-  - [x] Redux Toolkit state slice and Axios HTTP client with interceptors
-  - [x] Reusable component primitives (`Button`, `Badge`, `Card`)
-  - [x] Interactive live frontend-to-backend connection diagnostic page
-  - [x] Production deployment configurations (`vercel.json`, `render.yaml`)
-  - [x] GitHub Actions CI pipeline (`.github/workflows/ci.yml`)
-- [ ] **Milestone 2: Authentication, Workspace Engine & RBAC Implementation**
-- [ ] **Milestone 3: Projects, Kanban Boards & Real-Time Socket.IO Synchronization**
-- [ ] **Milestone 4: Tasks, Comments, Checklists & Activity Streams**
+- [x] **Milestone 2: Frontend Visual Foundation & Complete 15-Page Experience**
+  - [x] Warm editorial design system tokens (Ivory `#F8F5EF`, Terracotta `#E98269`, Sage `#91A88C`, Charcoal `#554B43`)
+  - [x] Plus Jakarta Sans and DM Sans typography scale
+  - [x] Complete 15-page responsive frontend architecture
+  - [x] Global layout shell (`Sidebar`, `Header`, `SearchModal` with `⌘K`, `AppLayout`)
+  - [x] Reusable component suite (`Button`, `Badge`, `Card`, `Modal`, `Drawer`, `Dropdown`, `Tabs`, `Breadcrumbs`, `ConfirmDialog`, `Avatar`, `EmptyState`, `SkeletonLoader`)
+  - [x] Interactive Kanban board with task detail drawer, checklists, and discussions
+  - [x] Toast notification system (`ToastContext`) and realistic mock state (`AppContext`)
+  - [x] Verified production build and 16 route responses (`HTTP 200 OK`)
+- [ ] **Milestone 3: Backend Authentication, Workspace Engine & RBAC Implementation**
+- [ ] **Milestone 4: Real-Time Sockets, Projects & Live Kanban Board Synchronization**
 - [ ] **Milestone 5: Production Deployment, Hardening & End-to-End Verification**
