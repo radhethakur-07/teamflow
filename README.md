@@ -52,25 +52,93 @@ TeamFlow follows a warm, tactile, editorial palette designed for ergonomic focus
 
 ```
 teamflow/
+├── .github/                          # Continuous integration workflows
+│   └── workflows/
+│       └── ci.yml                    # Automated build, syntax, and test checks
 ├── .gitignore                        # Global ignore (secrets, build outputs, node_modules)
-├── README.md                         # Project overview and milestone roadmap
+├── package.json                      # Monorepo orchestration scripts
+├── README.md                         # Project overview, quickstart & milestone tracking
 ├── docs/                             # Complete technical and architectural specifications
-│   ├── PRODUCT_REQUIREMENTS.md       # Product vision, personas, MVP vs. Future
-│   ├── SYSTEM_ARCHITECTURE.md        # C4 diagrams, layered backend, Vite frontend
-│   ├── DATABASE_DESIGN.md            # Schemas, Mermaid ERD, compound indexes
-│   ├── API_SPECIFICATION.md          # REST API endpoints, envelopes, error codes
-│   ├── USER_FLOWS.md                 # Mermaid sequence and state flow diagrams
-│   ├── ROLE_PERMISSIONS.md           # Fine-grained 4-tier RBAC matrix
-│   ├── DESIGN_SYSTEM.md              # Warm color tokens, typography, component specs
-│   └── DEPLOYMENT_PLAN.md            # Vercel, Render, Atlas CI/CD and env setup
+│   ├── PRODUCT_REQUIREMENTS.md
+│   ├── SYSTEM_ARCHITECTURE.md
+│   ├── DATABASE_DESIGN.md
+│   ├── API_SPECIFICATION.md
+│   ├── USER_FLOWS.md
+│   ├── ROLE_PERMISSIONS.md
+│   ├── DESIGN_SYSTEM.md
+│   └── DEPLOYMENT_PLAN.md
 ├── backend/                          # Node.js + Express + Socket.IO API
-│   ├── src/                          # Controllers, services, models, routes, middlewares
-│   ├── .env.example                  # Environment configuration template
+│   ├── src/
+│   │   ├── config/                   # Database (db.js) & environment (env.js)
+│   │   ├── middlewares/              # errorHandler.js & notFound.js
+│   │   ├── routes/                   # health.route.js & index.js
+│   │   ├── __tests__/                # Automated node:test suites (health.test.js)
+│   │   ├── app.js                    # Express app with helmet, cors, morgan, rateLimit
+│   │   └── server.js                 # HTTP + Socket.IO server & graceful shutdown
+│   ├── render.yaml                   # Render Web Service deployment blueprint
+│   ├── .env.example                  # Environment template
+│   ├── .gitignore
 │   └── package.json
 └── frontend/                         # React 18 + Vite SPA
-    ├── src/                          # Pages, components, stores, hooks, styles
-    ├── .env.example                  # Environment configuration template
+    ├── src/
+    │   ├── components/common/        # Button.jsx, Badge.jsx, Card.jsx
+    │   ├── pages/                    # ConnectionTestPage.jsx (live diagnostic console)
+    │   ├── services/                 # api.js (Axios) & healthService.js
+    │   ├── store/                    # Redux Toolkit store & systemSlice.js
+    │   ├── utils/                    # cn.js (twMerge + clsx)
+    │   ├── index.css                 # Tailwind directives & Warm Ivory base styles
+    │   ├── App.jsx                   # React Router routing
+    │   └── main.jsx                  # React DOM mount point & Redux Provider
+    ├── index.html                    # Google Fonts & SVG favicon
+    ├── tailwind.config.js            # Warm editorial design system tokens
+    ├── vercel.json                   # Vercel SPA rewrites & security headers
+    ├── vite.config.js                # Vite config & /api proxy to port 5000
+    ├── .env.example                  # Environment template
+    ├── .gitignore
     └── package.json
+```
+
+---
+
+## 🛠️ Quickstart & Local Development
+
+### 1. Prerequisites
+- Node.js &ge; 20.0.0
+- npm &ge; 10.0.0
+
+### 2. Install Dependencies
+```bash
+# In the root repository directory
+npm install
+```
+
+### 3. Environment Setup
+```bash
+# Configure backend environment
+cp backend/.env.example backend/.env
+
+# Configure frontend environment
+cp frontend/.env.example frontend/.env
+```
+
+### 4. Running the Application
+```bash
+# Start backend API (Port 5000)
+npm run dev:backend
+
+# In a separate terminal, start frontend SPA (Port 5173)
+npm run dev:frontend
+```
+- Open [http://localhost:5173](http://localhost:5173) in your browser to view the interactive Infrastructure Diagnostic & Connectivity Console.
+- Access the backend health endpoint directly at [http://localhost:5000/api/health](http://localhost:5000/api/health).
+
+### 5. Running Tests & Build Checks
+```bash
+# Run backend automated unit tests
+npm run test:backend
+
+# Run production Vite build check
+npm run build:frontend
 ```
 
 ---
@@ -78,17 +146,27 @@ teamflow/
 ## 🚀 Milestone Roadmap
 
 - [x] **Milestone 0: Product Architecture, Design System & System Specifications**
-  - [x] Product vision & problem definition
-  - [x] Target user personas & journey maps
-  - [x] Complete MVP feature specification vs. post-MVP roadmap
-  - [x] Layered system architecture & monorepo design
+  - [x] Product vision, problem definition & 4 target personas
+  - [x] MVP vs. Post-MVP feature matrix
+  - [x] C4 container diagrams & layered Express pattern
   - [x] MongoDB Atlas schema definitions & Mermaid ERD
-  - [x] Fine-grained 4-tier RBAC matrix & middleware policies
+  - [x] 4-tier RBAC matrix & authorization policies
   - [x] RESTful API endpoints & standard JSON envelopes
-  - [x] Socket.IO real-time event protocol
+  - [x] Socket.IO room-based event protocol
   - [x] Warm editorial design system tokens (Plus Jakarta Sans, DM Sans, Terracotta, Sage)
   - [x] Production deployment plan (Vercel, Render, Atlas)
-- [ ] **Milestone 1: Backend Foundation, Authentication & Workspace Engine**
-- [ ] **Milestone 2: Projects, Kanban Boards & Real-Time Socket.IO Synchronization**
-- [ ] **Milestone 3: Frontend Implementation with Warm Design System & Kanban UI**
-- [ ] **Milestone 4: Testing, CI/CD, Deployment & Production Readiness**
+- [x] **Milestone 1: Monorepo Scaffolding, Backend Foundation & Connectivity**
+  - [x] Monorepo directory structure (`/frontend`, `/backend`, `/docs`)
+  - [x] Node.js + Express backend with helmet, cors, morgan, and rate limiting
+  - [x] Standardized error handling and 404 middleware
+  - [x] Live backend health endpoint: `GET /api/health`
+  - [x] React 18 + Vite frontend with Tailwind CSS warm tokens
+  - [x] Redux Toolkit state slice and Axios HTTP client with interceptors
+  - [x] Reusable component primitives (`Button`, `Badge`, `Card`)
+  - [x] Interactive live frontend-to-backend connection diagnostic page
+  - [x] Production deployment configurations (`vercel.json`, `render.yaml`)
+  - [x] GitHub Actions CI pipeline (`.github/workflows/ci.yml`)
+- [ ] **Milestone 2: Authentication, Workspace Engine & RBAC Implementation**
+- [ ] **Milestone 3: Projects, Kanban Boards & Real-Time Socket.IO Synchronization**
+- [ ] **Milestone 4: Tasks, Comments, Checklists & Activity Streams**
+- [ ] **Milestone 5: Production Deployment, Hardening & End-to-End Verification**

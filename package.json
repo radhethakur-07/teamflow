@@ -1,0 +1,30 @@
+{
+  "name": "teamflow-monorepo",
+  "version": "1.0.0",
+  "description": "TeamFlow — Production-quality MERN SaaS application monorepo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend start",
+    "test:backend": "npm --prefix backend test --if-present",
+    "test:frontend": "npm --prefix frontend test --if-present"
+  },
+  "keywords": [
+    "mern",
+    "saas",
+    "kanban",
+    "collaboration",
+    "realtime",
+    "socketio",
+    "react",
+    "express"
+  ],
+  "author": "TeamFlow Team",
+  "license": "MIT"
+}
