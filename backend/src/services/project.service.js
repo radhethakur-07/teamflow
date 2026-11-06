@@ -11,7 +11,7 @@ export const createProject = async (workspaceId, projectData, actorId) => {
     workspaceId,
     slug,
     leadId: projectData.leadId || actorId,
-    memberIds: projectData.memberIds || [actorId],
+    memberIds: projectData.memberIds?.length ? projectData.memberIds : [actorId],
     ...projectData,
   });
 
@@ -26,7 +26,7 @@ export const createProject = async (workspaceId, projectData, actorId) => {
   return project;
 };
 
-export const getWorkspaceProjects = async (workspaceId, { status = 'active', search = '', page = 1, limit = 20 } = {}) => {
+export const getWorkspaceProjects = async (workspaceId, { status = 'active', search = '', page = 1, limit = 50 } = {}) => {
   const query = { workspaceId };
   if (status && status !== 'all') {
     query.status = status;
@@ -56,7 +56,7 @@ export const getWorkspaceProjects = async (workspaceId, { status = 'active', sea
         _id: '$projectId',
         totalTasks: { $sum: 1 },
         completedTasks: {
-          $sum: { $cond: [{ $eq: ['$column', 'done'] }, 1, 0] },
+          $sum: { $cond: [{ $in: ['$column', ['done', 'completed']] }, 1, 0] },
         },
       },
     },
@@ -95,7 +95,7 @@ export const getProjectById = async (projectId, workspaceId = null) => {
 
   const [totalTasks, completedTasks] = await Promise.all([
     Task.countDocuments({ projectId, isArchived: false }),
-    Task.countDocuments({ projectId, column: 'done', isArchived: false }),
+    Task.countDocuments({ projectId, column: { $in: ['done', 'completed'] }, isArchived: false }),
   ]);
 
   return { ...project, taskCount: totalTasks, completedCount: completedTasks };
@@ -106,7 +106,9 @@ export const updateProject = async (projectId, workspaceId, updateData) => {
     { _id: projectId, workspaceId },
     updateData,
     { new: true }
-  );
+  )
+    .populate('leadId', 'name email avatarUrl')
+    .populate('memberIds', 'name email avatarUrl');
 
   if (!project) {
     const error = new Error('Project not found.');
@@ -131,4 +133,12 @@ export const deleteProject = async (projectId, workspaceId) => {
   await Task.updateMany({ projectId }, { isArchived: true });
 
   return { success: true };
+};
+
+export const getProjectActivities = async (projectId, workspaceId, limit = 30) => {
+  return ActivityLog.find({ projectId, workspaceId })
+    .populate('actorId', 'name email avatarUrl')
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
 };

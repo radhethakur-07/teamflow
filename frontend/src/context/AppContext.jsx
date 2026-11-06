@@ -1,257 +1,392 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
+import workspaceService from '../services/workspaceService.js';
+import teamService from '../services/teamService.js';
+import projectService from '../services/projectService.js';
+import taskService from '../services/taskService.js';
 
 const AppContext = createContext(null);
 
-const initialMembers = [
-  { id: 'usr-1', name: 'Jane Doe', email: 'jane@teamflow.app', role: 'workspace_owner', roleTitle: 'Workspace Owner', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80', status: 'active', department: 'Product Design' },
-  { id: 'usr-2', name: 'Alex Rivera', email: 'alex@teamflow.app', role: 'admin', roleTitle: 'Administrator', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80', status: 'active', department: 'Engineering' },
-  { id: 'usr-3', name: 'Maya Lin', email: 'maya@teamflow.app', role: 'project_manager', roleTitle: 'Project Manager', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80', status: 'active', department: 'Marketing' },
-  { id: 'usr-4', name: 'David Chen', email: 'david@teamflow.app', role: 'team_member', roleTitle: 'Team Member', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80', status: 'active', department: 'Engineering' },
-  { id: 'usr-5', name: 'Sarah Connor', email: 'sarah@teamflow.app', role: 'team_member', roleTitle: 'Team Member', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80', status: 'active', department: 'Content' },
-];
-
-const initialProjects = [
-  {
-    id: 'proj-1',
-    name: 'Mobile App Redesign',
-    slug: 'mobile-app-redesign',
-    description: 'Next-generation iOS & Android application redesign focusing on warm typography and tactile micro-interactions.',
-    color: '#E98269', // Terracotta
-    status: 'active',
-    taskCount: 14,
-    completedCount: 6,
-    lead: initialMembers[0],
-    members: [initialMembers[0], initialMembers[1], initialMembers[3]],
-    dueDate: '2026-11-28',
-  },
-  {
-    id: 'proj-2',
-    name: 'Design System 2.0',
-    slug: 'design-system-2',
-    description: 'Comprehensive tokenization, Figma library alignment, and accessible React UI component primitives.',
-    color: '#91A88C', // Sage
-    status: 'active',
-    taskCount: 9,
-    completedCount: 7,
-    lead: initialMembers[1],
-    members: [initialMembers[0], initialMembers[1]],
-    dueDate: '2026-12-05',
-  },
-  {
-    id: 'proj-3',
-    name: 'Customer Onboarding Revamp',
-    slug: 'onboarding-revamp',
-    description: 'Streamlining time-to-first-task from 4 minutes down to 60 seconds with self-guided interactive tour.',
-    color: '#E9C995', // Mustard
-    status: 'active',
-    taskCount: 11,
-    completedCount: 4,
-    lead: initialMembers[2],
-    members: [initialMembers[2], initialMembers[4]],
-    dueDate: '2026-12-15',
-  },
-  {
-    id: 'proj-4',
-    name: 'Security & SOC-2 Compliance',
-    slug: 'security-compliance',
-    description: 'Audit trails, role-based access policies, credential isolation and automated penetration scanning.',
-    color: '#C9B8D9', // Lavender
-    status: 'active',
-    taskCount: 8,
-    completedCount: 3,
-    lead: initialMembers[1],
-    members: [initialMembers[1], initialMembers[3]],
-    dueDate: '2027-01-20',
-  },
-];
-
-const initialTasks = [
-  {
-    id: 'task-101',
-    projectId: 'proj-1',
-    columnId: 'col-todo',
-    title: 'Audit mobile navigation touch targets for WCAG 2.1 AA',
-    description: 'Ensure all bottom bar and header touch targets exceed 44x44px and provide visible tactile active states.',
-    priority: 'high',
-    dueDate: '2026-11-12',
-    assignees: [initialMembers[0]],
-    tags: ['UX Audit', 'Accessibility'],
-    checklist: [
-      { id: 'chk-1', text: 'Measure tab bar hit areas', completed: true },
-      { id: 'chk-2', text: 'Verify 4.5:1 text contrast on Warm Ivory', completed: false },
-      { id: 'chk-3', text: 'Test with VoiceOver screen reader', completed: false },
-    ],
-    commentsCount: 3,
-  },
-  {
-    id: 'task-102',
-    projectId: 'proj-1',
-    columnId: 'col-inprogress',
-    title: 'Implement Terracotta button variants and focus rings',
-    description: 'Create primary, secondary, and ghost buttons with warm terracotta hover transitions and offset focus rings.',
-    priority: 'urgent',
-    dueDate: '2026-11-10',
-    assignees: [initialMembers[1], initialMembers[0]],
-    tags: ['Components', 'Design Tokens'],
-    checklist: [
-      { id: 'chk-4', text: 'Export SVG icon alignments', completed: true },
-      { id: 'chk-5', text: 'Implement loading spinner transitions', completed: true },
-    ],
-    commentsCount: 5,
-  },
-  {
-    id: 'task-103',
-    projectId: 'proj-1',
-    columnId: 'col-review',
-    title: 'Prototype drag-and-drop Kanban card animations',
-    description: 'Fluid 1.5-degree card tilt upon grab, soft warm shadow elevation, and instant placeholder positioning.',
-    priority: 'medium',
-    dueDate: '2026-11-14',
-    assignees: [initialMembers[3]],
-    tags: ['Kanban', 'Micro-Interactions'],
-    checklist: [
-      { id: 'chk-6', text: 'Smooth column entry transitions', completed: true },
-      { id: 'chk-7', text: 'Keyboard spacebar pick-and-drop test', completed: true },
-    ],
-    commentsCount: 2,
-  },
-  {
-    id: 'task-104',
-    projectId: 'proj-1',
-    columnId: 'col-done',
-    title: 'Setup Vite monorepo with Plus Jakarta Sans & DM Sans',
-    description: 'Font pre-connect links in index.html and Tailwind configuration extended with warm editorial tokens.',
-    priority: 'low',
-    dueDate: '2026-11-06',
-    assignees: [initialMembers[1]],
-    tags: ['Foundation'],
-    checklist: [
-      { id: 'chk-8', text: 'Test font rendering on Windows & macOS', completed: true },
-    ],
-    commentsCount: 1,
-  },
-  {
-    id: 'task-105',
-    projectId: 'proj-2',
-    columnId: 'col-todo',
-    title: 'Define token naming conventions for warm ivory surfaces',
-    description: 'Standardize warm-50 through warm-900 palette roles and semantic aliases across React and Tailwind.',
-    priority: 'medium',
-    dueDate: '2026-11-18',
-    assignees: [initialMembers[0]],
-    tags: ['Design System'],
-    checklist: [],
-    commentsCount: 0,
-  },
-  {
-    id: 'task-106',
-    projectId: 'proj-3',
-    columnId: 'col-inprogress',
-    title: 'Design interactive workspace setup modal stepper',
-    description: 'Three-step onboarding flow: Workspace Name, Team Size & Roles, First Project Selection.',
-    priority: 'high',
-    dueDate: '2026-11-16',
-    assignees: [initialMembers[2]],
-    tags: ['Onboarding', 'Growth'],
-    checklist: [
-      { id: 'chk-9', text: 'Step 1: Workspace creation input', completed: true },
-      { id: 'chk-10', text: 'Step 2: Team invite token link', completed: false },
-    ],
-    commentsCount: 4,
-  },
-];
-
-const initialNotifications = [
-  { id: 'notif-1', title: 'Alex Rivera assigned you to a task', message: 'Implement Terracotta button variants and focus rings', time: '10m ago', read: false, type: 'ASSIGNED', link: '/board' },
-  { id: 'notif-2', title: 'Maya Lin commented on your project', message: '"The onboarding flow designs look warm and friendly!"', time: '1h ago', read: false, type: 'COMMENT', link: '/projects/proj-3' },
-  { id: 'notif-3', title: 'Milestone 1 Completed', message: 'Backend health check and Vite connection tests verified.', time: '2h ago', read: true, type: 'SYSTEM', link: '/status' },
-  { id: 'notif-4', title: 'Due date reminder', message: 'Audit mobile navigation touch targets is due in 3 days.', time: 'Yesterday', read: true, type: 'DUE', link: '/my-tasks' },
-];
-
 export const AppProvider = ({ children }) => {
+  const { user, isAuthenticated, currentWorkspace, workspaces, switchWorkspace: authSwitchWorkspace } = useAuth();
   const toast = useToast();
-  const [currentUser] = useState(initialMembers[0]);
-  const [workspace] = useState({
-    id: 'ws-1',
-    name: 'Acme Product Studio',
-    slug: 'acme-studio',
-    plan: 'Pro Plan',
-    membersCount: initialMembers.length,
-    avatar: 'TF',
-  });
 
-  const [projects, setProjects] = useState(initialProjects);
-  const [tasks, setTasks] = useState(initialTasks);
-  const [members, setMembers] = useState(initialMembers);
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const [activeProject, setActiveProject] = useState(initialProjects[0]);
+  const [activeWorkspace, setActiveWorkspace] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [activeProject, setActiveProject] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'notif-1',
+      title: 'Welcome to TeamFlow',
+      message: 'Your multi-tenant workspace has been provisioned.',
+      time: 'Just now',
+      read: false,
+      type: 'system',
+    },
+  ]);
 
-  // Task actions
-  const moveTask = (taskId, targetColumnId) => {
+  // Sync active workspace from auth state or localStorage
+  useEffect(() => {
+    if (currentWorkspace) {
+      const workspaceId = currentWorkspace._id || currentWorkspace.id;
+      localStorage.setItem('teamflow_active_workspace_id', workspaceId);
+      setActiveWorkspace(currentWorkspace);
+    } else if (workspaces && workspaces.length > 0) {
+      const first = workspaces[0].workspace || workspaces[0];
+      const workspaceId = first._id || first.id;
+      localStorage.setItem('teamflow_active_workspace_id', workspaceId);
+      setActiveWorkspace(first);
+    }
+  }, [currentWorkspace, workspaces]);
+
+  // Rehydrate all core workspace entities from backend
+  const loadWorkspaceData = useCallback(async (targetWorkspaceId) => {
+    if (!targetWorkspaceId) return;
+    setIsLoading(true);
+
+    try {
+      const [membersData, teamsData, projectsData, tasksData] = await Promise.all([
+        workspaceService.getMembers(targetWorkspaceId).catch(() => []),
+        teamService.getTeams(targetWorkspaceId).catch(() => []),
+        projectService.getProjects(targetWorkspaceId).catch(() => ({ projects: [] })),
+        taskService.getAllWorkspaceTasks(targetWorkspaceId).catch(() => ({ tasks: [] })),
+      ]);
+
+      const loadedProjects = projectsData.projects || projectsData || [];
+      const loadedTasks = tasksData.tasks || tasksData || [];
+
+      setMembers(membersData || []);
+      setTeams(teamsData || []);
+      setProjects(loadedProjects);
+      setTasks(loadedTasks);
+
+      // Set active project if not set or if current one not in list
+      setActiveProject((prev) => {
+        if (prev && loadedProjects.some((p) => (p._id || p.id) === (prev._id || prev.id))) {
+          return loadedProjects.find((p) => (p._id || p.id) === (prev._id || prev.id));
+        }
+        return loadedProjects.length > 0 ? loadedProjects[0] : null;
+      });
+    } catch (err) {
+      console.error('[LoadWorkspaceData Error]', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && activeWorkspace) {
+      const wsId = activeWorkspace._id || activeWorkspace.id;
+      loadWorkspaceData(wsId);
+    }
+  }, [isAuthenticated, activeWorkspace, loadWorkspaceData]);
+
+  // Workspace Operations
+  const switchWorkspace = async (workspaceId) => {
+    localStorage.setItem('teamflow_active_workspace_id', workspaceId);
+    if (authSwitchWorkspace) {
+      const target = workspaces.find((w) => (w._id || w.id || w.workspace?._id) === workspaceId);
+      if (target) authSwitchWorkspace(target.workspace || target);
+    }
+    const ws = await workspaceService.getWorkspaceById(workspaceId);
+    setActiveWorkspace(ws);
+    await loadWorkspaceData(workspaceId);
+    toast.info(`Switched to workspace: ${ws.name}`);
+  };
+
+  const createWorkspace = async ({ name, description, slug }) => {
+    try {
+      const ws = await workspaceService.createWorkspace({ name, description, slug });
+      toast.success(`Workspace "${ws.name}" created!`);
+      await switchWorkspace(ws._id);
+      return ws;
+    } catch (err) {
+      toast.error(err.message || 'Failed to create workspace.');
+      throw err;
+    }
+  };
+
+  const updateWorkspace = async (updateData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      const updated = await workspaceService.updateWorkspace(wsId, updateData);
+      setActiveWorkspace(updated);
+      toast.success('Workspace settings updated successfully.');
+      return updated;
+    } catch (err) {
+      toast.error(err.message || 'Failed to update workspace.');
+      throw err;
+    }
+  };
+
+  // Member Operations
+  const inviteMember = async (email, role) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      const inv = await workspaceService.inviteMember(wsId, { email, role });
+      toast.success(`Invitation dispatched to ${email}!`);
+      // Reload members list
+      const updatedMembers = await workspaceService.getMembers(wsId);
+      setMembers(updatedMembers);
+      return inv;
+    } catch (err) {
+      toast.error(err.message || 'Failed to invite member.');
+      throw err;
+    }
+  };
+
+  const updateMemberRole = async (memberId, newRole) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      await workspaceService.updateMemberRole(wsId, memberId, newRole);
+      toast.success('Member role updated.');
+      const updatedMembers = await workspaceService.getMembers(wsId);
+      setMembers(updatedMembers);
+    } catch (err) {
+      toast.error(err.message || 'Failed to update member role.');
+      throw err;
+    }
+  };
+
+  const removeMember = async (memberId) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      await workspaceService.removeMember(wsId, memberId);
+      toast.success('Member removed from workspace.');
+      setMembers((prev) => prev.filter((m) => (m._id || m.id) !== memberId));
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove member.');
+      throw err;
+    }
+  };
+
+  // Team Operations
+  const createTeam = async (teamData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      const team = await teamService.createTeam(wsId, teamData);
+      toast.success(`Team "${team.name}" created!`);
+      setTeams((prev) => [team, ...prev]);
+      return team;
+    } catch (err) {
+      toast.error(err.message || 'Failed to create team.');
+      throw err;
+    }
+  };
+
+  const updateTeam = async (teamId, teamData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      const updated = await teamService.updateTeam(wsId, teamId, teamData);
+      toast.success(`Team "${updated.name}" updated!`);
+      setTeams((prev) => prev.map((t) => ((t._id || t.id) === teamId ? updated : t)));
+      return updated;
+    } catch (err) {
+      toast.error(err.message || 'Failed to update team.');
+      throw err;
+    }
+  };
+
+  const deleteTeam = async (teamId) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      await teamService.deleteTeam(wsId, teamId);
+      toast.success('Team deleted.');
+      setTeams((prev) => prev.filter((t) => (t._id || t.id) !== teamId));
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete team.');
+      throw err;
+    }
+  };
+
+  // Project Operations
+  const addProject = async (projectData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    if (!wsId) return;
+
+    try {
+      const project = await projectService.createProject(wsId, projectData);
+      toast.success(`Project "${project.name}" created!`);
+      setProjects((prev) => [project, ...prev]);
+      setActiveProject(project);
+      return project;
+    } catch (err) {
+      toast.error(err.message || 'Failed to create project.');
+      throw err;
+    }
+  };
+
+  const updateProject = async (projectId, updateData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      const updated = await projectService.updateProject(projectId, updateData, wsId);
+      toast.success(`Project "${updated.name}" updated!`);
+      setProjects((prev) => prev.map((p) => ((p._id || p.id) === projectId ? updated : p)));
+      if (activeProject && (activeProject._id || activeProject.id) === projectId) {
+        setActiveProject(updated);
+      }
+      return updated;
+    } catch (err) {
+      toast.error(err.message || 'Failed to update project.');
+      throw err;
+    }
+  };
+
+  const deleteProject = async (projectId) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      await projectService.deleteProject(projectId, wsId);
+      toast.success('Project deleted.');
+      setProjects((prev) => prev.filter((p) => (p._id || p.id) !== projectId));
+      setTasks((prev) => prev.filter((t) => (t.projectId?._id || t.projectId) !== projectId));
+      setActiveProject((prev) => (prev && (prev._id || prev.id) === projectId ? null : prev));
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete project.');
+      throw err;
+    }
+  };
+
+  // Task Operations with Optimistic UI and Rollback
+  const addTask = async (taskData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    const pId = taskData.projectId || activeProject?._id || activeProject?.id;
+    if (!wsId || !pId) return;
+
+    try {
+      const task = await taskService.createTask(pId, taskData, wsId);
+      toast.success(`Task "${task.title}" added to board!`);
+      setTasks((prev) => [task, ...prev]);
+
+      // Increment project taskCount
+      setProjects((prev) =>
+        prev.map((p) =>
+          (p._id || p.id) === pId
+            ? { ...p, taskCount: (p.taskCount || 0) + 1 }
+            : p
+        )
+      );
+
+      return task;
+    } catch (err) {
+      toast.error(err.message || 'Failed to create task.');
+      throw err;
+    }
+  };
+
+  const updateTask = async (taskId, updateData) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      const updated = await taskService.updateTask(taskId, updateData, wsId);
+      setTasks((prev) => prev.map((t) => ((t._id || t.id) === taskId ? updated : t)));
+      return updated;
+    } catch (err) {
+      toast.error(err.message || 'Failed to update task.');
+      throw err;
+    }
+  };
+
+  const moveTask = async (taskId, targetColumn, newOrderIndex) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    // Normalize targetColumn to match backend enum
+    let normalizedCol = targetColumn;
+    if (targetColumn === 'col-todo') normalizedCol = 'todo';
+    else if (targetColumn === 'col-inprogress') normalizedCol = 'inprogress';
+    else if (targetColumn === 'col-review') normalizedCol = 'review';
+    else if (targetColumn === 'col-done') normalizedCol = 'done';
+
+    // 1. Optimistic Update in UI
+    const previousTasks = [...tasks];
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, columnId: targetColumnId } : t))
+      prev.map((t) =>
+        (t._id || t.id) === taskId
+          ? { ...t, column: normalizedCol, columnId: `col-${normalizedCol}` }
+          : t
+      )
     );
-    toast.success('Task moved successfully');
+
+    // 2. Persist to Backend API
+    try {
+      await taskService.moveTask(
+        taskId,
+        { column: normalizedCol, orderIndex: newOrderIndex },
+        wsId
+      );
+    } catch (err) {
+      // 3. Rollback on failure
+      setTasks(previousTasks);
+      toast.error('Failed to move task. Reverting changes...');
+    }
   };
 
-  const addTask = (newTask) => {
-    const task = {
-      id: `task-${Date.now()}`,
-      projectId: activeProject.id,
-      columnId: 'col-todo',
-      checklist: [],
-      commentsCount: 0,
-      assignees: [currentUser],
-      tags: ['General'],
-      ...newTask,
-    };
-    setTasks((prev) => [task, ...prev]);
-    toast.success(`Task "${task.title}" created!`);
-    return task;
+  const deleteTask = async (taskId) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      await taskService.deleteTask(taskId, wsId);
+      toast.success('Task deleted.');
+      setTasks((prev) => prev.filter((t) => (t._id || t.id) !== taskId));
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete task.');
+      throw err;
+    }
   };
 
-  const toggleChecklistItem = (taskId, itemId) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const updatedChecklist = t.checklist.map((c) =>
-          c.id === itemId ? { ...c, completed: !c.completed } : c
-        );
-        return { ...t, checklist: updatedChecklist };
-      })
-    );
+  const addChecklistItem = async (taskId, title) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      const item = await taskService.addChecklistItem(taskId, title, wsId);
+      setTasks((prev) =>
+        prev.map((t) =>
+          (t._id || t.id) === taskId
+            ? { ...t, checklist: [...(t.checklist || []), item] }
+            : t
+        )
+      );
+      return item;
+    } catch (err) {
+      toast.error(err.message || 'Failed to add checklist item.');
+      throw err;
+    }
   };
 
-  const addProject = (projectData) => {
-    const newProj = {
-      id: `proj-${Date.now()}`,
-      slug: projectData.name.toLowerCase().replace(/\s+/g, '-'),
-      taskCount: 0,
-      completedCount: 0,
-      lead: currentUser,
-      members: [currentUser],
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      ...projectData,
-    };
-    setProjects((prev) => [newProj, ...prev]);
-    toast.success(`Project "${newProj.name}" created!`);
-    return newProj;
-  };
-
-  const inviteMember = (email, role) => {
-    const newMember = {
-      id: `usr-${Date.now()}`,
-      name: email.split('@')[0].replace(/[._]/g, ' '),
-      email,
-      role,
-      roleTitle: role === 'admin' ? 'Administrator' : role === 'project_manager' ? 'Project Manager' : 'Team Member',
-      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80`,
-      status: 'invited',
-      department: 'Invited Member',
-    };
-    setMembers((prev) => [...prev, newMember]);
-    toast.success(`Invitation sent to ${email}!`);
+  const toggleChecklistItem = async (taskId, itemId) => {
+    const wsId = activeWorkspace?._id || activeWorkspace?.id;
+    try {
+      const updatedItem = await taskService.toggleChecklistItem(taskId, itemId, wsId);
+      setTasks((prev) =>
+        prev.map((t) => {
+          if ((t._id || t.id) === taskId) {
+            const updatedChecklist = (t.checklist || []).map((c) =>
+              (c._id || c.id) === itemId ? updatedItem : c
+            );
+            return { ...t, checklist: updatedChecklist };
+          }
+          return t;
+        })
+      );
+      return updatedItem;
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle checklist item.');
+      throw err;
+    }
   };
 
   const markAllNotificationsRead = () => {
@@ -265,24 +400,48 @@ export const AppProvider = ({ children }) => {
     );
   };
 
+  const currentUser = user || {
+    name: 'Team Member',
+    email: 'member@teamflow.app',
+    role: 'workspace_owner',
+    roleTitle: 'Workspace Owner',
+  };
+
   return (
     <AppContext.Provider
       value={{
         currentUser,
-        workspace,
+        workspace: activeWorkspace || { name: 'My Workspace', slug: 'workspace' },
+        workspaces: workspaces || [],
         projects,
         tasks,
         members,
+        teams,
         notifications,
-        activeProject,
+        activeProject: activeProject || projects[0] || { name: 'General', id: 'gen-1' },
         setActiveProject,
-        moveTask,
-        addTask,
-        toggleChecklistItem,
-        addProject,
+        isLoading,
+        switchWorkspace,
+        createWorkspace,
+        updateWorkspace,
         inviteMember,
+        updateMemberRole,
+        removeMember,
+        createTeam,
+        updateTeam,
+        deleteTeam,
+        addProject,
+        updateProject,
+        deleteProject,
+        addTask,
+        updateTask,
+        moveTask,
+        deleteTask,
+        addChecklistItem,
+        toggleChecklistItem,
         markAllNotificationsRead,
         markNotificationRead,
+        refreshData: () => loadWorkspaceData(activeWorkspace?._id || activeWorkspace?.id),
       }}
     >
       {children}
@@ -297,3 +456,5 @@ export const useApp = () => {
   }
   return context;
 };
+
+export default AppContext;

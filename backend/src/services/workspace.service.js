@@ -216,3 +216,11 @@ export const removeMember = async (workspaceId, targetMemberId, actorId) => {
 
   return { success: true };
 };
+
+export const getWorkspaceActivities = async (workspaceId, limit = 50) => {
+  return ActivityLog.find({ workspaceId })
+    .populate('actorId', 'name email avatarUrl')
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+};

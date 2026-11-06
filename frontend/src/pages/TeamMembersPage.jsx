@@ -7,7 +7,9 @@ import {
   ShieldCheck, 
   MoreHorizontal,
   Trash2,
-  CheckCircle2
+  FolderGit2,
+  Plus,
+  Crown
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import Avatar from '../components/common/Avatar.jsx';
@@ -16,29 +18,80 @@ import Button from '../components/common/Button.jsx';
 import Input from '../components/common/Input.jsx';
 import Modal from '../components/common/Modal.jsx';
 import Select from '../components/common/Select.jsx';
+import Tabs, { TabPanel } from '../components/common/Tabs.jsx';
 import Dropdown, { DropdownItem } from '../components/common/Dropdown.jsx';
 import EmptyState from '../components/common/EmptyState.jsx';
 
 export const TeamMembersPage = () => {
-  const { members, inviteMember, workspace } = useApp();
+  const { 
+    members, 
+    teams, 
+    inviteMember, 
+    updateMemberRole, 
+    removeMember, 
+    createTeam, 
+    deleteTeam,
+    workspace,
+    currentUser 
+  } = useApp();
+
+  const [activeTab, setActiveTab] = useState('members');
   const [search, setSearch] = useState('');
+
+  // Invite Modal
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('team_member');
+  const [isInviting, setIsInviting] = useState(false);
 
-  const filteredMembers = members.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase()) ||
-    m.department.toLowerCase().includes(search.toLowerCase())
-  );
+  // Create Team Modal
+  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [teamDescription, setTeamDescription] = useState('');
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
 
-  const handleSendInvite = (e) => {
+  const filteredMembers = members.filter((m) => {
+    const userObj = m.user || m;
+    const name = (userObj.name || '').toLowerCase();
+    const email = (userObj.email || '').toLowerCase();
+    const q = search.toLowerCase();
+    return name.includes(q) || email.includes(q);
+  });
+
+  const handleSendInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
 
-    inviteMember(inviteEmail.trim(), inviteRole);
-    setInviteEmail('');
-    setIsInviteModalOpen(false);
+    setIsInviting(true);
+    try {
+      await inviteMember(inviteEmail.trim(), inviteRole);
+      setInviteEmail('');
+      setIsInviteModalOpen(false);
+    } catch (err) {
+      // Handled in context
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleCreateTeamSubmit = async (e) => {
+    e.preventDefault();
+    if (!teamName.trim()) return;
+
+    setIsCreatingTeam(true);
+    try {
+      await createTeam({
+        name: teamName.trim(),
+        description: teamDescription.trim(),
+      });
+      setTeamName('');
+      setTeamDescription('');
+      setIsCreateTeamOpen(false);
+    } catch (err) {
+      // Handled in context
+    } finally {
+      setIsCreatingTeam(false);
+    }
   };
 
   const getRoleBadgeVariant = (role) => {
@@ -50,149 +103,253 @@ export const TeamMembersPage = () => {
     }
   };
 
+  const formatRoleLabel = (role) => {
+    switch (role) {
+      case 'workspace_owner': return 'Workspace Owner';
+      case 'admin': return 'Administrator';
+      case 'project_manager': return 'Project Manager';
+      default: return 'Team Member';
+    }
+  };
+
   return (
     <div className="space-y-6 text-left">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-heading font-extrabold text-warm-900 tracking-tight">
-            Team Members
+            Team & Membership
           </h1>
           <p className="text-xs text-warm-500">
-            Manage your workspace roster, roles, and collaborative permissions.
+            Manage your workspace roster, roles, and collaborative team squads.
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          leftIcon={UserPlus}
-          onClick={() => setIsInviteModalOpen(true)}
-        >
-          Invite Teammate
-        </Button>
-      </div>
-
-      {/* Search & Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="w-full sm:w-80">
-          <Input
-            leftIcon={Search}
-            placeholder="Search by name, email, or department..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="text-xs text-warm-500 font-medium">
-          Showing <strong className="text-warm-800">{filteredMembers.length}</strong> of {members.length} members
+        <div className="flex items-center gap-2.5">
+          {activeTab === 'members' ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={UserPlus}
+              onClick={() => setIsInviteModalOpen(true)}
+            >
+              Invite Member
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={Plus}
+              onClick={() => setIsCreateTeamOpen(true)}
+            >
+              Create Team
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Members Table */}
-      <div className="bg-white rounded-2xl border border-warm-200 shadow-warm-sm overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-warm-100/60 border-b border-warm-200 text-warm-700 font-heading font-bold uppercase tracking-wider text-[10px]">
-              <th className="p-4">Member</th>
-              <th className="p-4">Role & Permissions</th>
-              <th className="p-4">Department</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-warm-100 text-warm-700">
-            {filteredMembers.map((member) => (
-              <tr key={member.id} className="hover:bg-warm-50/70 transition-colors">
-                {/* Member Info */}
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      src={member.avatar}
-                      name={member.name}
-                      size="md"
-                      status={member.status === 'active' ? 'online' : 'offline'}
-                    />
-                    <div>
-                      <p className="font-heading font-bold text-sm text-warm-900 leading-snug">
-                        {member.name}
-                      </p>
-                      <p className="text-[11px] text-warm-400 font-mono">
-                        {member.email}
-                      </p>
-                    </div>
-                  </div>
-                </td>
+      {/* Tabs */}
+      <Tabs
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: 'members', label: `Members (${members.length})` },
+          { id: 'teams', label: `Teams (${teams.length})` },
+        ]}
+      />
 
-                {/* Role */}
-                <td className="p-4">
-                  <Badge variant={getRoleBadgeVariant(member.role)} size="sm">
-                    {member.roleTitle}
-                  </Badge>
-                </td>
-
-                {/* Department */}
-                <td className="p-4 text-warm-600 font-medium">
-                  {member.department}
-                </td>
-
-                {/* Status */}
-                <td className="p-4">
-                  <Badge variant={member.status === 'active' ? 'sage' : 'mustard'} size="sm" dot>
-                    {member.status === 'active' ? 'Active' : 'Invited'}
-                  </Badge>
-                </td>
-
-                {/* Action Menu */}
-                <td className="p-4 text-right">
-                  <Dropdown
-                    align="right"
-                    trigger={() => (
-                      <button
-                        type="button"
-                        className="p-1.5 text-warm-400 hover:text-warm-800 rounded-lg hover:bg-warm-100 transition-colors focus:outline-none"
-                        aria-label="Member options"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    )}
-                  >
-                    <DropdownItem onClick={() => {}}>View Profile</DropdownItem>
-                    <DropdownItem onClick={() => {}}>Change Workspace Role</DropdownItem>
-                    {member.role !== 'workspace_owner' && (
-                      <DropdownItem danger onClick={() => {}}>
-                        Remove Member
-                      </DropdownItem>
-                    )}
-                  </Dropdown>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredMembers.length === 0 && (
-          <div className="p-10 text-center">
-            <EmptyState
-              icon={Users}
-              title="No teammates match this query"
-              description={`No member found matching "${search}".`}
+      {/* TAB 1: MEMBERS */}
+      <TabPanel id="members" activeTab={activeTab}>
+        <div className="space-y-4">
+          {/* Search bar */}
+          <div className="max-w-md">
+            <Input
+              leftIcon={Search}
+              placeholder="Filter members by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-        )}
-      </div>
+
+          {/* Members Table */}
+          <div className="bg-white rounded-2xl border border-warm-200 shadow-warm-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-warm-700">
+                <thead className="bg-warm-50/80 border-b border-warm-200 uppercase font-heading font-bold text-[10px] tracking-wider text-warm-500">
+                  <tr>
+                    <th className="py-3.5 px-4 sm:px-6">Member</th>
+                    <th className="py-3.5 px-4">Role</th>
+                    <th className="py-3.5 px-4 hidden sm:table-cell">Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-warm-100">
+                  {filteredMembers.map((member) => {
+                    const userObj = member.user || member;
+                    const memberId = member._id || member.id;
+                    const isOwner = member.role === 'workspace_owner';
+
+                    return (
+                      <tr key={memberId} className="hover:bg-warm-50/50 transition-colors">
+                        <td className="py-3.5 px-4 sm:px-6">
+                          <div className="flex items-center gap-3">
+                            <Avatar
+                              src={userObj.avatarUrl || userObj.avatar}
+                              name={userObj.name || userObj.email}
+                              size="md"
+                            />
+                            <div>
+                              <div className="font-heading font-bold text-warm-900 flex items-center gap-1.5">
+                                <span>{userObj.name}</span>
+                                {isOwner && (
+                                  <Crown className="w-3.5 h-3.5 text-terracotta-500 inline" title="Workspace Owner" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-warm-500">{userObj.email}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <Badge variant={getRoleBadgeVariant(member.role)} size="sm">
+                            {formatRoleLabel(member.role)}
+                          </Badge>
+                        </td>
+
+                        <td className="py-3.5 px-4 hidden sm:table-cell">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warm-600 capitalize">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sage-500" />
+                            {member.status || 'active'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          {!isOwner && (
+                            <Dropdown
+                              align="right"
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="p-1 rounded-md text-warm-400 hover:text-warm-700 hover:bg-warm-100"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              }
+                            >
+                              <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-warm-400">
+                                Change Role
+                              </div>
+                              <DropdownItem onClick={() => updateMemberRole(memberId, 'admin')}>
+                                Administrator
+                              </DropdownItem>
+                              <DropdownItem onClick={() => updateMemberRole(memberId, 'project_manager')}>
+                                Project Manager
+                              </DropdownItem>
+                              <DropdownItem onClick={() => updateMemberRole(memberId, 'team_member')}>
+                                Team Member
+                              </DropdownItem>
+                              <div className="border-t border-warm-100 my-1" />
+                              <DropdownItem
+                                onClick={() => removeMember(memberId)}
+                                className="text-terracotta-600 font-bold"
+                              >
+                                Remove from Workspace
+                              </DropdownItem>
+                            </Dropdown>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredMembers.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-12 text-center text-warm-400">
+                        No team members matching your search criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </TabPanel>
+
+      {/* TAB 2: TEAMS */}
+      <TabPanel id="teams" activeTab={activeTab}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {teams.map((team) => {
+              const teamId = team._id || team.id;
+              const memberCount = (team.memberIds || []).length;
+
+              return (
+                <div
+                  key={teamId}
+                  className="bg-white rounded-2xl border border-warm-200 p-5 shadow-warm-sm hover:shadow-warm-md transition-all space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <FolderGit2 className="w-4 h-4 text-terracotta-500" />
+                        <h3 className="font-heading font-bold text-sm text-warm-900">
+                          {team.name}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-warm-500 line-clamp-2">
+                        {team.description || 'No description provided.'}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteTeam(teamId)}
+                      className="text-warm-400 hover:text-terracotta-600 p-1 rounded-md"
+                      title="Delete team"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-warm-100 flex items-center justify-between text-xs text-warm-500">
+                    <span>{memberCount} Assigned Members</span>
+                    {team.leadId && (
+                      <span className="font-semibold text-warm-700">
+                        Lead: {team.leadId.name || 'Lead'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {teams.length === 0 && (
+              <div className="col-span-full">
+                <EmptyState
+                  icon={FolderGit2}
+                  title="No functional teams created yet"
+                  description="Group your collaborators into focused functional teams (e.g. Design, Frontend, DevOps) to streamline project assignments."
+                  actionLabel="Create Team"
+                  onAction={() => setIsCreateTeamOpen(true)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </TabPanel>
 
       {/* Invite Member Modal */}
       <Modal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
-        title="Invite New Teammate"
-        description={`Send an invitation token link to join ${workspace.name}.`}
-        maxWidth="md"
+        title="Invite New Colleague"
+        description="Send an invitation link to collaborate on this workspace."
+        maxWidth="sm"
       >
         <form onSubmit={handleSendInvite} className="space-y-4">
           <Input
-            label="Work Email Address"
+            label="Colleague's Work Email"
             type="email"
             leftIcon={Mail}
             placeholder="colleague@company.com"
@@ -203,27 +360,78 @@ export const TeamMembersPage = () => {
           />
 
           <Select
-            label="Role & Access Level"
+            label="Initial Workspace Role"
             value={inviteRole}
             onChange={(e) => setInviteRole(e.target.value)}
             options={[
-              { value: 'team_member', label: 'Team Member (Tasks, Checklists, Discussions)' },
-              { value: 'project_manager', label: 'Project Manager (Boards, Columns, Task Assignments)' },
-              { value: 'admin', label: 'Administrator (Team Provisioning & Project Oversight)' },
+              { value: 'team_member', label: 'Team Member (Default)' },
+              { value: 'project_manager', label: 'Project Manager' },
+              { value: 'admin', label: 'Administrator' },
             ]}
           />
 
-          <div className="p-3 bg-warm-50 rounded-xl border border-warm-200 text-xs text-warm-500 space-y-1">
-            <p className="font-bold text-warm-800">Security note:</p>
-            <p>Invited members will receive a secure token valid for 48 hours to complete their account setup.</p>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-warm-200">
-            <Button variant="secondary" onClick={() => setIsInviteModalOpen(false)}>
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsInviteModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={!inviteEmail.trim()}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isInviting}
+            >
               Send Invitation
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Create Team Modal */}
+      <Modal
+        isOpen={isCreateTeamOpen}
+        onClose={() => setIsCreateTeamOpen(false)}
+        title="Create Team Squad"
+        description="Organize workspace members into functional teams."
+        maxWidth="sm"
+      >
+        <form onSubmit={handleCreateTeamSubmit} className="space-y-4">
+          <Input
+            label="Team Name"
+            placeholder="e.g. Frontend Engineering"
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            required
+            autoFocus
+          />
+
+          <Input
+            label="Description (Optional)"
+            placeholder="e.g. UI architecture, React components, and design system"
+            value={teamDescription}
+            onChange={(e) => setTeamDescription(e.target.value)}
+          />
+
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsCreateTeamOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isCreatingTeam}
+            >
+              Create Team
             </Button>
           </div>
         </form>

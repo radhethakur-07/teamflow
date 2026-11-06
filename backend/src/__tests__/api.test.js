@@ -21,9 +21,15 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.disconnect();
-  await mongod.stop();
-  await new Promise((resolve) => server.close(resolve));
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  if (mongod) {
+    await mongod.stop();
+  }
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('REST API Test Suite: Auth, Workspaces, Teams, Projects, Tasks & Multi-tenant Isolation', async (t) => {

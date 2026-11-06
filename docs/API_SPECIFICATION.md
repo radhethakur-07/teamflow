@@ -100,20 +100,33 @@ All API endpoints follow a predictable JSON response structure.
 | `GET` | `/api/v1/projects/:projectId` | Get project details, throughput & team | Member |
 | `PATCH`| `/api/v1/projects/:projectId` | Update project details, status or lead | Owner, Admin, PM |
 | `DELETE`| `/api/v1/projects/:projectId` | Archive project and associated tasks | Owner, Admin |
+| `GET` | `/api/v1/projects/:projectId/activities` | Audit trail of project activities | Member |
 
-### 2.5 Tasks (`/api/v1/projects/:projectId/tasks` & `/api/v1/tasks/:taskId`)
+### 2.5 Tasks & Comments (`/api/v1/tasks`, `/api/v1/projects/:projectId/tasks`, `/api/v1/workspaces/:workspaceId/tasks`)
 | Method | Endpoint | Description | Role Required |
-| :--- | :--- | :--- | :---: |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/workspaces/:workspaceId/tasks/my-tasks` | Get authenticated user's assigned tasks in workspace | Member |
+| `GET` | `/api/v1/workspaces/:workspaceId/tasks/all` | List workspace tasks with sorting, search & filtering | Member |
 | `GET` | `/api/v1/projects/:projectId/tasks` | Get project tasks filtered by column/priority | Member |
 | `POST` | `/api/v1/projects/:projectId/tasks` | Create task with priority & assignees | Member |
-| `GET` | `/api/v1/tasks/:taskId` | Get task details with checklists | Member |
-| `PATCH`| `/api/v1/tasks/:taskId` | Update task title, description, priority | Member |
+| `GET` | `/api/v1/tasks/:taskId` | Get task details with checklists and comments | Member |
+| `PATCH`| `/api/v1/tasks/:taskId` | Update task title, description, priority, column, due date | Member |
 | `PATCH`| `/api/v1/tasks/:taskId/move` | Move task to new column & fractional orderIndex | Member |
 | `DELETE`| `/api/v1/tasks/:taskId` | Soft archive task | Owner, Admin, PM |
 | `POST` | `/api/v1/tasks/:taskId/checklist` | Add checklist item to task | Member |
 | `PATCH`| `/api/v1/tasks/:taskId/checklist/:itemId` | Toggle checklist item completion | Member |
+| `DELETE`| `/api/v1/tasks/:taskId/checklist/:itemId` | Remove checklist item from task | Member |
+| `GET` | `/api/v1/tasks/:taskId/comments` | Retrieve task comments with author populated | Member |
+| `POST` | `/api/v1/tasks/:taskId/comments` | Post comment to task and record audit activity | Member |
+| `DELETE`| `/api/v1/tasks/:taskId/comments/:commentId` | Delete comment (author or admin) | Member |
 
-### 2.6 Health & Readiness Probes
+### 2.6 Activities & Audit Trails
+| Method | Endpoint | Description | Role Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/v1/workspaces/:workspaceId/activities` | Chronological activity log for workspace | Member |
+| `GET` | `/api/v1/projects/:projectId/activities` | Chronological activity log for project | Member |
+
+### 2.7 Health & Readiness Probes
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
 | `GET` | `/api/health` | Liveness probe: returns server uptime, memory usage, node version | No |

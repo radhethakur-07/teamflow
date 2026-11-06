@@ -52,4 +52,12 @@ router.delete(
   workspaceController.removeMember
 );
 
+// Workspace activity logs
+router.get(
+  '/:workspaceId/activities',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  workspaceController.getWorkspaceActivities
+);
+
 export default router;

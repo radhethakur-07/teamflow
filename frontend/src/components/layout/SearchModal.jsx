@@ -25,16 +25,18 @@ export const SearchModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase())
+    (p.name || '').toLowerCase().includes(query.toLowerCase())
   );
 
   const filteredTasks = tasks.filter((t) =>
-    t.title.toLowerCase().includes(query.toLowerCase())
+    (t.title || '').toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredMembers = members.filter((m) =>
-    m.name.toLowerCase().includes(query.toLowerCase()) || m.email.toLowerCase().includes(query.toLowerCase())
-  );
+  const filteredMembers = members.filter((m) => {
+    const name = m.name || m.user?.name || '';
+    const email = m.email || m.user?.email || '';
+    return name.toLowerCase().includes(query.toLowerCase()) || email.toLowerCase().includes(query.toLowerCase());
+  });
 
   const handleSelect = (url) => {
     navigate(url);
@@ -77,24 +79,27 @@ export const SearchModal = ({ isOpen, onClose }) => {
               <span className="text-[10px] uppercase font-bold text-warm-400 tracking-wider px-2">
                 Projects
               </span>
-              {filteredProjects.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => handleSelect(`/projects/${p.id}`)}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: p.color }}
-                    />
-                    <span className="text-xs font-semibold text-warm-900 group-hover:text-terracotta-600">
-                      {p.name}
-                    </span>
+              {filteredProjects.map((p) => {
+                const pId = p._id || p.id;
+                return (
+                  <div
+                    key={pId}
+                    onClick={() => handleSelect(`/projects/${pId}`)}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: p.color || '#E98269' }}
+                      />
+                      <span className="text-xs font-semibold text-warm-900 group-hover:text-terracotta-600">
+                        {p.name}
+                      </span>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-warm-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-warm-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -104,23 +109,27 @@ export const SearchModal = ({ isOpen, onClose }) => {
               <span className="text-[10px] uppercase font-bold text-warm-400 tracking-wider px-2">
                 Tasks
               </span>
-              {filteredTasks.slice(0, 4).map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => handleSelect(`/board`)}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <CheckSquare className="w-3.5 h-3.5 text-sage-500" />
-                    <span className="text-xs font-medium text-warm-900 truncate max-w-sm group-hover:text-terracotta-600">
-                      {t.title}
+              {filteredTasks.slice(0, 4).map((t) => {
+                const tId = t._id || t.id;
+                const projectId = t.projectId || (t.project?._id || t.project);
+                return (
+                  <div
+                    key={tId}
+                    onClick={() => handleSelect(projectId ? `/board?project=${projectId}` : '/board')}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5 truncate max-w-xs sm:max-w-sm">
+                      <CheckSquare className="w-3.5 h-3.5 text-sage-500 shrink-0" />
+                      <span className="text-xs font-medium text-warm-900 truncate group-hover:text-terracotta-600">
+                        {t.title}
+                      </span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-warm-100 text-warm-600 capitalize shrink-0">
+                      {t.priority}
                     </span>
                   </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-warm-100 text-warm-600 capitalize">
-                    {t.priority}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -130,26 +139,33 @@ export const SearchModal = ({ isOpen, onClose }) => {
               <span className="text-[10px] uppercase font-bold text-warm-400 tracking-wider px-2">
                 Team Members
               </span>
-              {filteredMembers.map((m) => (
-                <div
-                  key={m.id}
-                  onClick={() => handleSelect(`/members`)}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={m.avatar}
-                      alt={m.name}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className="text-xs font-semibold text-warm-900">{m.name}</p>
-                      <p className="text-[11px] text-warm-400">{m.email}</p>
+              {filteredMembers.map((m) => {
+                const mId = m._id || m.id || m.user?._id;
+                const mName = m.name || m.user?.name || 'Member';
+                const mEmail = m.email || m.user?.email || '';
+                const mAvatar = m.avatar || m.user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(mName)}`;
+                const mRole = m.roleTitle || m.role || 'Member';
+                return (
+                  <div
+                    key={mId}
+                    onClick={() => handleSelect(`/members`)}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-warm-100/70 cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={mAvatar}
+                        alt={mName}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                      <div>
+                        <p className="text-xs font-semibold text-warm-900">{mName}</p>
+                        <p className="text-[11px] text-warm-400">{mEmail}</p>
+                      </div>
                     </div>
+                    <span className="text-[10px] text-warm-500 capitalize">{mRole.replace('_', ' ')}</span>
                   </div>
-                  <span className="text-[10px] text-warm-500">{m.roleTitle}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

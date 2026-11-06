@@ -27,8 +27,12 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.disconnect();
-  await mongod.stop();
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  if (mongod) {
+    await mongod.stop();
+  }
 });
 
 test('Model Suite: creates and validates all 12 Mongoose models', async (t) => {

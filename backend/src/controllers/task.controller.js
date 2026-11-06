@@ -22,6 +22,21 @@ export const getTasks = asyncHandler(async (req, res) => {
   return sendSuccess(res, tasks, 'Tasks retrieved');
 });
 
+export const getMyTasks = asyncHandler(async (req, res) => {
+  const { priority, search, column } = req.query;
+  const tasks = await taskService.getMyWorkspaceTasks(req.workspaceId, req.user._id, {
+    priority,
+    search,
+    column,
+  });
+  return sendSuccess(res, tasks, 'My tasks retrieved successfully');
+});
+
+export const getAllWorkspaceTasks = asyncHandler(async (req, res) => {
+  const result = await taskService.getAllWorkspaceTasks(req.workspaceId, req.query);
+  return sendSuccess(res, result.tasks, 'Workspace tasks retrieved', result.meta);
+});
+
 export const getTaskById = asyncHandler(async (req, res) => {
   const task = await taskService.getTaskById(req.params.taskId, req.workspaceId);
   return sendSuccess(res, task, 'Task details retrieved');
@@ -70,4 +85,13 @@ export const toggleChecklistItem = asyncHandler(async (req, res) => {
     req.params.itemId
   );
   return sendSuccess(res, item, 'Checklist item toggled');
+});
+
+export const deleteChecklistItem = asyncHandler(async (req, res) => {
+  await taskService.deleteChecklistItem(
+    req.params.taskId,
+    req.workspaceId,
+    req.params.itemId
+  );
+  return sendSuccess(res, { success: true }, 'Checklist item deleted');
 });

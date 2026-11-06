@@ -24,9 +24,15 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.disconnect();
-  await mongod.stop();
-  await new Promise((resolve) => server.close(resolve));
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  if (mongod) {
+    await mongod.stop();
+  }
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('Production Authentication Suite: Email verification, Brevo OTP, Token Rotation, Reuse Detection, Password Reset', async (t) => {

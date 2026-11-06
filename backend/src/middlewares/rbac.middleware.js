@@ -1,19 +1,53 @@
 import { WorkspaceMember } from '../models/WorkspaceMember.js';
-import { Workspace } from '../models/Workspace.js';
 import mongoose from 'mongoose';
 
 export const requireWorkspaceRole = (allowedRoles = []) => {
   return async (req, res, next) => {
     // Resolve workspace ID from route params, query, or custom header
-    let workspaceId = req.params.workspaceId || req.query.workspaceId || req.headers['x-workspace-id'];
+    let workspaceId =
+      req.params.workspaceId ||
+      req.query.workspaceId ||
+      req.headers['x-workspace-id'];
 
-    // If still not resolved but project is in params, project will be looked up
-    if (!workspaceId && req.params.projectId && mongoose.Types.ObjectId.isValid(req.params.projectId)) {
+    // Resolve from project context if present
+    if (
+      !workspaceId &&
+      req.params.projectId &&
+      mongoose.Types.ObjectId.isValid(req.params.projectId)
+    ) {
       const { Project } = await import('../models/Project.js');
       const project = await Project.findById(req.params.projectId).select('workspaceId');
       if (project) {
         workspaceId = project.workspaceId.toString();
         req.project = project;
+      }
+    }
+
+    // Resolve from task context if present
+    if (
+      !workspaceId &&
+      req.params.taskId &&
+      mongoose.Types.ObjectId.isValid(req.params.taskId)
+    ) {
+      const { Task } = await import('../models/Task.js');
+      const task = await Task.findById(req.params.taskId).select('workspaceId projectId');
+      if (task) {
+        workspaceId = task.workspaceId.toString();
+        req.task = task;
+      }
+    }
+
+    // Resolve from team context if present
+    if (
+      !workspaceId &&
+      req.params.teamId &&
+      mongoose.Types.ObjectId.isValid(req.params.teamId)
+    ) {
+      const { Team } = await import('../models/Team.js');
+      const team = await Team.findById(req.params.teamId).select('workspaceId');
+      if (team) {
+        workspaceId = team.workspaceId.toString();
+        req.team = team;
       }
     }
 

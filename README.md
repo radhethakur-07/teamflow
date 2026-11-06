@@ -114,5 +114,17 @@ npm run build:frontend
   - [x] Redux auth slice, AuthContext, and Axios concurrency-safe 401 refresh queue
   - [x] Frontend protected routes (`<ProtectedRoute />`), password visibility toggles, and interactive confirmation modals
   - [x] 14/14 automated backend test cases passing across models, auth, and REST endpoints
-- [ ] **Milestone 5: Real-Time Sockets, Projects & Live Kanban Board Synchronization**
-- [ ] **Milestone 6: Production Deployment, Hardening & End-to-End Verification**
+- [x] **Milestone 5: Core TeamFlow Experience & End-to-End Real Backend Integration**
+  - [x] Full workspace lifecycle: switcher, creation modal, invitation tokens, member management, and workspace settings
+  - [x] Team squads: team creation, member roster assignment, team deletion with RBAC enforcement
+  - [x] Project management: project creation with cover images, color badges, due dates, project details, and real-time task throughput metrics
+  - [x] Kanban Board: 4 columns (`todo`, `inprogress`, `review`, `done`), native HTML5 drag-and-drop with optimistic UI updates & rollback on server error
+  - [x] Interactive task drawer: priority updates, due dates, checklist subtasks with progress tracking, task deletion
+  - [x] Real-time task comments: comment thread feed, comment posting, author deletion permissions
+  - [x] Search & Quick Navigation (`SearchModal` / `Ctrl+K`): cross-entity search for projects, tasks, and members
+  - [x] Personal dashboard & analytics: My Tasks view with quick completion toggles, upcoming deadlines widget, calendar month grid view
+  - [x] Activity history & audit trail: workspace & project chronological event logs
+  - [x] Multi-tenant IDOR defense: external workspace users strictly forbidden (HTTP 403) from accessing or modifying private tasks and projects
+  - [x] 25/25 automated backend test cases passing across auth, models, REST endpoints, and Milestone 5 core workflows
+- [ ] **Milestone 6: Real-Time WebSockets & Live Kanban Collaboration**
+- [ ] **Milestone 7: Production Cloud Deployment, Hardening & Final Verification**

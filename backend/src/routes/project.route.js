@@ -33,4 +33,12 @@ router.delete(
   projectController.deleteProject
 );
 
+// Project activities audit trail
+router.get(
+  '/:projectId/activities',
+  authenticateJWT,
+  requireWorkspaceRole(),
+  projectController.getProjectActivities
+);
+
 export default router;

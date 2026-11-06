@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -11,9 +12,13 @@ import {
   Send,
   MessageSquare,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Clock,
+  Layers
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
+import taskService from '../services/taskService.js';
 import TaskCard from '../components/domain/TaskCard.jsx';
 import Drawer from '../components/common/Drawer.jsx';
 import Button from '../components/common/Button.jsx';
@@ -24,13 +29,17 @@ import { Checkbox } from '../components/common/Checkbox.jsx';
 import NewTaskModal from '../components/domain/NewTaskModal.jsx';
 
 export const KanbanBoardPage = () => {
+  const [searchParams] = useSearchParams();
   const { 
     projects, 
     activeProject, 
     setActiveProject, 
     tasks, 
     moveTask, 
+    deleteTask,
+    addChecklistItem,
     toggleChecklistItem,
+    workspace,
     currentUser 
   } = useApp();
 
@@ -40,55 +49,114 @@ export const KanbanBoardPage = () => {
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [newChecklistText, setNewChecklistText] = useState('');
   const [commentText, setCommentText] = useState('');
-  const [mockComments, setMockComments] = useState([
-    { id: 'c-1', author: 'Alex Rivera', text: 'Confirmed the contrast ratio on warm ivory meets 4.8:1 AA standard.', time: '20m ago', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
-    { id: 'c-2', author: 'Jane Doe', text: 'Great! Moving this card to In Review for team sign-off.', time: '5m ago', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' }
-  ]);
+  const [taskComments, setTaskComments] = useState([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isPostingComment, setIsPostingComment] = useState(false);
+
+  // Sync active project from query param if provided
+  useEffect(() => {
+    const queryProjId = searchParams.get('project');
+    if (queryProjId && projects.length > 0) {
+      const match = projects.find((p) => (p._id || p.id) === queryProjId);
+      if (match) setActiveProject(match);
+    }
+  }, [searchParams, projects, setActiveProject]);
+
+  // Load comments when selected task opens
+  useEffect(() => {
+    const loadComments = async () => {
+      if (!selectedTask) {
+        setTaskComments([]);
+        return;
+      }
+      const tId = selectedTask._id || selectedTask.id;
+      const wsId = workspace?._id || workspace?.id;
+      setIsLoadingComments(true);
+      try {
+        const comments = await taskService.getComments(tId, wsId);
+        setTaskComments(comments || []);
+      } catch (err) {
+        console.error('Failed to load task comments', err);
+      } finally {
+        setIsLoadingComments(false);
+      }
+    };
+
+    loadComments();
+  }, [selectedTask, workspace]);
 
   const columns = [
-    { id: 'col-todo', title: 'To Do', color: '#73665C' },
-    { id: 'col-inprogress', title: 'In Progress', color: '#E9C995' },
-    { id: 'col-review', title: 'In Review', color: '#C9B8D9' },
-    { id: 'col-done', title: 'Done', color: '#91A88C' },
+    { id: 'todo', key: 'todo', title: 'To Do', color: '#73665C' },
+    { id: 'inprogress', key: 'inprogress', title: 'In Progress', color: '#E9C995' },
+    { id: 'review', key: 'review', title: 'In Review', color: '#C9B8D9' },
+    { id: 'done', key: 'done', title: 'Completed', color: '#91A88C' },
   ];
 
+  const currentProjectId = activeProject?._id || activeProject?.id;
+
   const currentProjectTasks = tasks.filter((t) => {
-    const matchesProject = t.projectId === activeProject.id;
-    const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
-                          t.description.toLowerCase().includes(search.toLowerCase());
+    const pId = t.projectId?._id || t.projectId;
+    const matchesProject = !currentProjectId || pId === currentProjectId;
+    const matchesSearch =
+      (t.title || '').toLowerCase().includes(search.toLowerCase()) ||
+      (t.description || '').toLowerCase().includes(search.toLowerCase());
     const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
     return matchesProject && matchesSearch && matchesPriority;
   });
 
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || !selectedTask) return;
 
-    setMockComments([
-      ...mockComments,
-      {
-        id: `c-${Date.now()}`,
-        author: currentUser.name,
-        text: commentText.trim(),
-        time: 'Just now',
-        avatar: currentUser.avatar,
-      }
-    ]);
-    setCommentText('');
+    const tId = selectedTask._id || selectedTask.id;
+    const wsId = workspace?._id || workspace?.id;
+    setIsPostingComment(true);
+
+    try {
+      const newComment = await taskService.addComment(tId, commentText.trim(), wsId);
+      setTaskComments((prev) => [...prev, newComment]);
+      setCommentText('');
+    } catch (err) {
+      console.error('Failed to post comment', err);
+    } finally {
+      setIsPostingComment(false);
+    }
   };
 
-  const handleAddChecklist = (e) => {
+  const handleAddChecklist = async (e) => {
     e.preventDefault();
     if (!newChecklistText.trim() || !selectedTask) return;
 
-    const newItem = {
-      id: `chk-${Date.now()}`,
-      text: newChecklistText.trim(),
-      completed: false,
-    };
+    const tId = selectedTask._id || selectedTask.id;
+    try {
+      const newItem = await addChecklistItem(tId, newChecklistText.trim());
+      setSelectedTask((prev) => ({
+        ...prev,
+        checklist: [...(prev.checklist || []), newItem],
+      }));
+      setNewChecklistText('');
+    } catch (err) {
+      console.error('Failed to add checklist item', err);
+    }
+  };
 
-    selectedTask.checklist = [...(selectedTask.checklist || []), newItem];
-    setNewChecklistText('');
+  const handleToggleChecklist = async (itemId) => {
+    if (!selectedTask) return;
+    const tId = selectedTask._id || selectedTask.id;
+    const updated = await toggleChecklistItem(tId, itemId);
+    setSelectedTask((prev) => ({
+      ...prev,
+      checklist: (prev.checklist || []).map((c) =>
+        (c._id || c.id) === itemId ? { ...c, completed: updated.completed } : c
+      ),
+    }));
+  };
+
+  const handleDeleteSelectedTask = async () => {
+    if (!selectedTask) return;
+    const tId = selectedTask._id || selectedTask.id;
+    await deleteTask(tId);
+    setSelectedTask(null);
   };
 
   return (
@@ -103,22 +171,27 @@ export const KanbanBoardPage = () => {
           <div>
             <div className="flex items-center gap-2">
               <select
-                value={activeProject.id}
+                value={currentProjectId || ''}
                 onChange={(e) => {
-                  const found = projects.find((p) => p.id === e.target.value);
+                  const found = projects.find(
+                    (p) => (p._id || p.id) === e.target.value
+                  );
                   if (found) setActiveProject(found);
                 }}
                 className="font-heading font-extrabold text-xl text-warm-900 bg-transparent border-none focus:outline-none cursor-pointer hover:text-terracotta-600 transition-colors tracking-tight pr-6"
               >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} Board
-                  </option>
-                ))}
+                {projects.map((p) => {
+                  const pId = p._id || p.id;
+                  return (
+                    <option key={pId} value={pId}>
+                      {p.name} Board
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <p className="text-xs text-warm-500">
-              Real-time collaboration board &bull; Sub-100ms multi-user sync
+              Drag and drop tasks between workflow stages with instant persistence
             </p>
           </div>
         </div>
@@ -128,7 +201,7 @@ export const KanbanBoardPage = () => {
           <div className="w-48 sm:w-56">
             <Input
               leftIcon={Search}
-              placeholder="Filter cards..."
+              placeholder="Search tasks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -160,12 +233,30 @@ export const KanbanBoardPage = () => {
       {/* Kanban Board Columns Container */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start overflow-x-auto pb-4">
         {columns.map((column) => {
-          const colTasks = currentProjectTasks.filter((t) => t.columnId === column.id);
+          const colTasks = currentProjectTasks.filter((t) => {
+            const c = t.column || 'todo';
+            if (column.key === 'todo') return c === 'todo';
+            if (column.key === 'inprogress') return c === 'inprogress' || c === 'in_progress';
+            if (column.key === 'review') return c === 'review' || c === 'in_review';
+            if (column.key === 'done') return c === 'done' || c === 'completed';
+            return c === column.key;
+          });
 
           return (
             <div
               key={column.id}
-              className="bg-warm-100/70 rounded-2xl border border-warm-200/90 p-4 space-y-3.5 min-h-[500px] flex flex-col justify-between"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const taskId = e.dataTransfer.getData('text/plain');
+                if (taskId) {
+                  moveTask(taskId, column.key);
+                }
+              }}
+              className="bg-warm-100/70 rounded-2xl border border-warm-200/90 p-4 space-y-3.5 min-h-[520px] flex flex-col justify-between transition-colors hover:bg-warm-100"
             >
               <div className="space-y-3">
                 {/* Column Header */}
@@ -187,145 +278,176 @@ export const KanbanBoardPage = () => {
 
                 {/* Card Stack */}
                 <div className="space-y-3">
-                  {colTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      columns={columns}
-                      onClick={() => setSelectedTask(task)}
-                      onMove={(taskId, targetColId) => moveTask(taskId, targetColId)}
-                    />
-                  ))}
+                  {colTasks.map((task) => {
+                    const taskId = task._id || task.id;
+                    return (
+                      <div
+                        key={taskId}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', taskId);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                      >
+                        <TaskCard
+                          task={task}
+                          columns={columns}
+                          onClick={() => setSelectedTask(task)}
+                          onMove={(tId, targetColKey) => moveTask(tId, targetColKey)}
+                        />
+                      </div>
+                    );
+                  })}
 
                   {colTasks.length === 0 && (
-                    <div className="border border-dashed border-warm-300 rounded-xl p-8 text-center text-xs text-warm-400">
-                      No tasks in {column.title}
+                    <div className="py-12 border-2 border-dashed border-warm-200/70 rounded-xl text-center text-xs text-warm-400">
+                      Drag tasks here
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Add Card Footer */}
+              {/* Quick Column Add Button */}
               <button
                 type="button"
                 onClick={() => setIsNewTaskModalOpen(true)}
-                className="w-full py-2 px-3 rounded-xl border border-dashed border-warm-300 hover:border-terracotta-400 text-xs font-semibold text-warm-500 hover:text-terracotta-600 hover:bg-white/60 transition-all flex items-center justify-center gap-1.5 focus:outline-none"
+                className="w-full py-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-warm-500 hover:text-warm-900 hover:bg-warm-200/50 rounded-xl transition-colors border border-dashed border-warm-300/60"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Task to {column.title}</span>
+                <span>Add Card</span>
               </button>
             </div>
           );
         })}
       </div>
 
-      {/* Task Detail Slide-out Drawer */}
+      {/* Task Detail Drawer */}
       <Drawer
         isOpen={Boolean(selectedTask)}
         onClose={() => setSelectedTask(null)}
-        title={selectedTask?.title}
-        subtitle={`${activeProject.name} &bull; ${selectedTask?.priority?.toUpperCase()} Priority`}
-        width="md"
+        title={selectedTask?.title || 'Task Details'}
+        description={`In column: ${selectedTask?.column?.toUpperCase()}`}
+        size="lg"
       >
         {selectedTask && (
           <div className="space-y-6 text-left">
-            {/* Column Switcher */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-warm-50 border border-warm-200">
-              <span className="text-xs font-semibold text-warm-600">Workflow Column</span>
-              <select
-                value={selectedTask.columnId}
-                onChange={(e) => {
-                  moveTask(selectedTask.id, e.target.value);
-                  setSelectedTask({ ...selectedTask, columnId: e.target.value });
-                }}
-                className="text-xs bg-white border border-warm-300 rounded-lg py-1.5 px-3 text-warm-800 font-semibold focus:outline-none"
+            {/* Action Bar */}
+            <div className="flex items-center justify-between pb-3 border-b border-warm-200">
+              <Badge variant="terracotta" size="md">
+                Priority: {selectedTask.priority?.toUpperCase()}
+              </Badge>
+
+              <Button
+                variant="danger"
+                size="sm"
+                leftIcon={Trash2}
+                onClick={handleDeleteSelectedTask}
               >
-                {columns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+                Delete Task
+              </Button>
             </div>
 
             {/* Description */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-warm-400">
+            <div className="space-y-2">
+              <label className="text-xs font-heading font-bold text-warm-900 uppercase tracking-wider">
                 Description
-              </span>
-              <p className="text-xs text-warm-700 leading-relaxed bg-white p-3.5 rounded-xl border border-warm-200">
+              </label>
+              <p className="text-xs text-warm-700 bg-warm-50 p-3.5 rounded-xl border border-warm-200 leading-relaxed whitespace-pre-wrap">
                 {selectedTask.description || 'No description provided.'}
               </p>
             </div>
 
-            {/* Interactive Checklist */}
+            {/* Subtasks / Checklist */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-warm-400">
-                  Checklist Items ({selectedTask.checklist?.filter((c) => c.completed).length || 0}/{selectedTask.checklist?.length || 0})
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-warm-500" />
+                  <h4 className="text-xs font-heading font-bold text-warm-900 uppercase tracking-wider">
+                    Subtasks / Checklist
+                  </h4>
+                </div>
+                <span className="text-xs text-warm-500">
+                  {(selectedTask.checklist || []).filter((c) => c.completed).length} /{' '}
+                  {(selectedTask.checklist || []).length} done
                 </span>
               </div>
 
-              <div className="space-y-2">
-                {(selectedTask.checklist || []).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-lg border border-warm-200 bg-white shadow-warm-sm flex items-center justify-between gap-3 text-xs"
-                  >
-                    <Checkbox
-                      label={item.text}
-                      checked={item.completed}
-                      onChange={() => toggleChecklistItem(selectedTask.id, item.id)}
-                    />
-                  </div>
-                ))}
-
-                {/* Add checklist input */}
-                <form onSubmit={handleAddChecklist} className="flex gap-2 pt-1">
-                  <Input
-                    placeholder="Add checklist item..."
-                    value={newChecklistText}
-                    onChange={(e) => setNewChecklistText(e.target.value)}
-                  />
-                  <Button variant="secondary" size="sm" type="submit" leftIcon={Plus}>
-                    Add
-                  </Button>
-                </form>
+              <div className="space-y-1.5">
+                {(selectedTask.checklist || []).map((item) => {
+                  const itemId = item._id || item.id;
+                  return (
+                    <div
+                      key={itemId}
+                      className="flex items-center justify-between p-2.5 rounded-lg bg-warm-50 border border-warm-200 text-xs"
+                    >
+                      <Checkbox
+                        label={item.title || item.text}
+                        checked={item.completed}
+                        onChange={() => handleToggleChecklist(itemId)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
+
+              <form onSubmit={handleAddChecklist} className="flex gap-2 pt-1">
+                <Input
+                  placeholder="Add a new checklist item..."
+                  value={newChecklistText}
+                  onChange={(e) => setNewChecklistText(e.target.value)}
+                />
+                <Button type="submit" variant="secondary" size="sm">
+                  Add
+                </Button>
+              </form>
             </div>
 
-            {/* Comments Thread */}
-            <div className="space-y-3 pt-4 border-t border-warm-200">
-              <span className="text-xs font-bold uppercase tracking-wider text-warm-400">
-                Discussion & Activity
-              </span>
-
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {mockComments.map((c) => (
-                  <div key={c.id} className="p-3 rounded-xl bg-warm-50 border border-warm-200 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <Avatar src={c.avatar} name={c.author} size="xs" />
-                        <span className="font-bold text-warm-900">{c.author}</span>
-                      </div>
-                      <span className="text-[10px] text-warm-400">{c.time}</span>
-                    </div>
-                    <p className="text-xs text-warm-700 pl-6 leading-relaxed">
-                      {c.text}
-                    </p>
-                  </div>
-                ))}
+            {/* Real Comments Feed */}
+            <div className="space-y-3 pt-3 border-t border-warm-200">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-warm-500" />
+                <h4 className="text-xs font-heading font-bold text-warm-900 uppercase tracking-wider">
+                  Discussion ({taskComments.length})
+                </h4>
               </div>
 
-              {/* Add Comment Input */}
-              <form onSubmit={handleAddComment} className="flex gap-2 pt-2">
+              <div className="space-y-2.5 max-h-56 overflow-y-auto">
+                {taskComments.map((c) => (
+                  <div
+                    key={c._id || c.id}
+                    className="p-3 rounded-xl bg-warm-50 border border-warm-100 space-y-1 text-xs"
+                  >
+                    <div className="flex items-center justify-between text-warm-500 text-[11px]">
+                      <span className="font-bold text-warm-900">
+                        {c.authorId?.name || 'Collaborator'}
+                      </span>
+                      <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p className="text-warm-700">{c.content}</p>
+                  </div>
+                ))}
+
+                {taskComments.length === 0 && !isLoadingComments && (
+                  <p className="text-xs text-warm-400 italic py-2">
+                    No comments yet. Start the conversation below.
+                  </p>
+                )}
+              </div>
+
+              <form onSubmit={handleAddComment} className="flex gap-2">
                 <Input
-                  placeholder="Leave a comment or update..."
+                  placeholder="Write a comment..."
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                 />
-                <Button variant="primary" size="sm" type="submit" leftIcon={Send}>
-                  Post
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  rightIcon={Send}
+                  isLoading={isPostingComment}
+                >
+                  Send
                 </Button>
               </form>
             </div>

@@ -51,3 +51,11 @@ export const removeMember = asyncHandler(async (req, res) => {
   await workspaceService.removeMember(workspaceId, memberId, req.user._id);
   return sendSuccess(res, { success: true }, 'Member removed from workspace');
 });
+
+export const getWorkspaceActivities = asyncHandler(async (req, res) => {
+  const activities = await workspaceService.getWorkspaceActivities(
+    req.params.workspaceId,
+    parseInt(req.query.limit, 10) || 50
+  );
+  return sendSuccess(res, activities, 'Workspace activities retrieved');
+});

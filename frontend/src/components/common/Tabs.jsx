@@ -80,4 +80,13 @@ export const Tabs = ({
   );
 };
 
+export const TabPanel = ({ id, activeTab, children, className = '' }) => {
+  if (id !== activeTab) return null;
+  return (
+    <div role="tabpanel" className={className}>
+      {children}
+    </div>
+  );
+};
+
 export default Tabs;

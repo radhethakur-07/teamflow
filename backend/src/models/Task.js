@@ -39,7 +39,7 @@ const taskSchema = new mongoose.Schema(
     },
     column: {
       type: String,
-      enum: ['todo', 'inprogress', 'review', 'done'],
+      enum: ['todo', 'inprogress', 'in_progress', 'review', 'in_review', 'done', 'completed'],
       default: 'todo',
       index: true,
     },

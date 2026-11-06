@@ -7,10 +7,12 @@ export const createProjectSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Project name must be at least 2 characters').max(120),
     description: z.string().max(1000).optional(),
+    coverImage: z.string().optional().or(z.literal('')),
     color: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color').optional(),
     teamId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
     leadId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
-    dueDate: z.string().datetime().optional().nullable().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+    memberIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).optional(),
+    dueDate: z.string().optional().nullable(),
   }),
 });
 
@@ -21,10 +23,12 @@ export const updateProjectSchema = z.object({
   body: z.object({
     name: z.string().min(2).max(120).optional(),
     description: z.string().max(1000).optional(),
+    coverImage: z.string().optional().or(z.literal('')),
     color: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/).optional(),
     status: z.enum(['active', 'archived', 'completed']).optional(),
     teamId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
     leadId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional().nullable(),
+    memberIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).optional(),
     dueDate: z.string().optional().nullable(),
   }),
 });

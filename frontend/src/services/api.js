@@ -12,13 +12,19 @@ export const apiClient = axios.create({
   withCredentials: true, // Required for HttpOnly refresh-token cookies
 });
 
-// Request Interceptor: Attach bearer tokens when present
+// Request Interceptor: Attach bearer tokens & active workspace context
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('teamflow_access_token');
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const activeWorkspaceId = localStorage.getItem('teamflow_active_workspace_id');
+    if (activeWorkspaceId && !config.headers['x-workspace-id']) {
+      config.headers['x-workspace-id'] = activeWorkspaceId;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

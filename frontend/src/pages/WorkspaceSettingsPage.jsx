@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Save, 
@@ -13,36 +13,42 @@ import { useApp } from '../context/AppContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import Card from '../components/common/Card.jsx';
 import Input from '../components/common/Input.jsx';
+import Textarea from '../components/common/Textarea.jsx';
 import Button from '../components/common/Button.jsx';
 import Badge from '../components/common/Badge.jsx';
-import ConfirmDialog from '../components/common/ConfirmDialog.jsx';
 
 export const WorkspaceSettingsPage = () => {
-  const { workspace, members } = useApp();
+  const { workspace, updateWorkspace, members } = useApp();
   const toast = useToast();
-  const [name, setName] = useState(workspace.name);
-  const [slug, setSlug] = useState(workspace.slug);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const [name, setName] = useState(workspace?.name || '');
+  const [description, setDescription] = useState(workspace?.description || '');
+  const [slug, setSlug] = useState(workspace?.slug || '');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSaveSettings = (e) => {
+  useEffect(() => {
+    if (workspace) {
+      setName(workspace.name || '');
+      setDescription(workspace.description || '');
+      setSlug(workspace.slug || '');
+    }
+  }, [workspace]);
+
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
+    if (!name.trim()) return;
+
     setIsLoading(true);
-
-    setTimeout(() => {
+    try {
+      await updateWorkspace({
+        name: name.trim(),
+        description: description.trim(),
+      });
+    } catch (err) {
+      // Handled in context
+    } finally {
       setIsLoading(false);
-      toast.success('Workspace settings updated successfully.');
-    }, 600);
-  };
-
-  const handleDeleteWorkspace = () => {
-    setIsDeleting(true);
-    setTimeout(() => {
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-      toast.error('Workspace deletion request initiated (Simulated in UI preview).');
-    }, 800);
+    }
   };
 
   return (
@@ -53,7 +59,7 @@ export const WorkspaceSettingsPage = () => {
           Workspace Settings
         </h1>
         <p className="text-xs text-warm-500">
-          Governance, plan management, and organization configuration for <strong className="text-warm-800">{workspace.name}</strong>.
+          Governance, branding, and team configuration for <strong className="text-warm-800">{workspace?.name}</strong>.
         </p>
       </div>
 
@@ -64,7 +70,7 @@ export const WorkspaceSettingsPage = () => {
             <h3 className="font-heading font-bold text-sm text-warm-900">
               General Information
             </h3>
-            <Badge variant="terracotta" size="sm">Owner Access</Badge>
+            <Badge variant="terracotta" size="sm">Workspace Owner</Badge>
           </div>
 
           <div className="space-y-4">
@@ -72,29 +78,40 @@ export const WorkspaceSettingsPage = () => {
               label="Workspace Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Acme Studio"
               required
             />
 
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-warm-700">
-                Workspace URL Identifier
-              </label>
-              <div className="flex rounded-lg border border-warm-300 bg-warm-50 overflow-hidden shadow-warm-sm text-xs">
-                <span className="px-3 py-2 text-warm-400 font-mono bg-warm-100 border-r border-warm-200">
-                  teamflow.app/
-                </span>
-                <input
-                  type="text"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-transparent text-warm-800 font-mono focus:outline-none"
-                />
-              </div>
-            </div>
+            <Input
+              label="Slug Identifier"
+              value={slug}
+              disabled
+              helperText="Workspace slugs are used in URLs and cannot be modified."
+            />
+
+            <Textarea
+              label="Workspace Purpose / Bio"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your organization or team mission..."
+              rows={3}
+            />
+          </div>
+
+          <div className="pt-3 border-t border-warm-100 flex justify-end">
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              leftIcon={Save}
+              isLoading={isLoading}
+            >
+              Save Workspace Changes
+            </Button>
           </div>
         </Card>
 
-        {/* Subscription Plan & Usage */}
+        {/* Subscription & Tier */}
         <Card padding="md" className="space-y-4">
           <div className="flex items-center justify-between border-b border-warm-100 pb-3">
             <div className="flex items-center gap-2">
@@ -106,81 +123,25 @@ export const WorkspaceSettingsPage = () => {
             <Badge variant="sage" size="sm">Active</Badge>
           </div>
 
-          <div className="p-4 rounded-xl bg-warm-50 border border-warm-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-warm-100/70 border border-warm-200">
             <div className="space-y-1">
-              <h4 className="font-heading font-bold text-sm text-warm-900">
-                {workspace.plan}
-              </h4>
-              <p className="text-xs text-warm-500">
-                Unlimited boards, sub-100ms real-time sync, and up to 20 team seats.
-              </p>
-              <div className="pt-2 text-xs text-warm-600 font-semibold">
-                {members.length} of 20 seats allocated
+              <div className="flex items-center gap-2">
+                <span className="font-heading font-bold text-sm text-warm-900 capitalize">
+                  {workspace?.plan || 'Starter'} Plan
+                </span>
+                <span className="text-[11px] text-warm-500">&bull; Unlimited Projects</span>
               </div>
+              <p className="text-xs text-warm-500">
+                Current usage: <strong>{members.length}</strong> active members
+              </p>
             </div>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => toast.info('Billing portal simulated.')}
-            >
-              Manage Plan
+            <Button variant="secondary" size="sm">
+              Manage Billing
             </Button>
           </div>
         </Card>
-
-        {/* Save Button */}
-        <div className="flex justify-end pt-1">
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            leftIcon={Save}
-            isLoading={isLoading}
-          >
-            Save Workspace Changes
-          </Button>
-        </div>
       </form>
-
-      {/* Danger Zone */}
-      <Card padding="md" className="border-terracotta-200 bg-terracotta-50/20 space-y-4">
-        <div className="flex items-center gap-2 text-terracotta-600 font-heading font-bold text-sm">
-          <AlertTriangle className="w-4 h-4" />
-          <span>Danger Zone</span>
-        </div>
-
-        <p className="text-xs text-warm-600">
-          Deleting a workspace will permanently delete all projects, Kanban boards, tasks, comments, and member associations.
-        </p>
-
-        <div className="flex items-center justify-between pt-2 border-t border-terracotta-100">
-          <div>
-            <p className="text-xs font-bold text-warm-900">Permanently delete workspace</p>
-            <p className="text-[11px] text-warm-400">Irreversible action</p>
-          </div>
-
-          <Button
-            variant="danger"
-            size="sm"
-            leftIcon={Trash2}
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            Delete Workspace
-          </Button>
-        </div>
-      </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleDeleteWorkspace}
-        title={`Delete "${workspace.name}"?`}
-        message="This action is irreversible. All projects, Kanban tasks, and team memberships will be permanently deleted."
-        confirmText="Yes, Delete Workspace"
-        isLoading={isDeleting}
-      />
     </div>
   );
 };

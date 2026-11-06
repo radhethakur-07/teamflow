@@ -21,11 +21,12 @@ apiRouter.use('/workspaces', workspaceRouter);
 // Teams (mounted under workspaces)
 apiRouter.use('/workspaces/:workspaceId/teams', teamRouter);
 
-// Projects (both workspace-scoped and direct ID lookups)
+// Projects (workspace-scoped and direct ID lookups)
 apiRouter.use('/workspaces/:workspaceId/projects', projectRouter);
 apiRouter.use('/projects', projectRouter);
 
-// Tasks (both project-scoped and direct ID lookups)
+// Tasks (workspace-scoped, project-scoped, and direct lookups)
+apiRouter.use('/workspaces/:workspaceId/tasks', taskRouter);
 apiRouter.use('/projects/:projectId/tasks', taskRouter);
 apiRouter.use('/tasks', taskRouter);
 
