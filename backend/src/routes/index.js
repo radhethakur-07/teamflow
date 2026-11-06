@@ -5,6 +5,8 @@ import workspaceRouter from './workspace.route.js';
 import teamRouter from './team.route.js';
 import projectRouter from './project.route.js';
 import taskRouter from './task.route.js';
+import messageRouter from './message.route.js';
+import notificationRouter from './notification.route.js';
 
 const apiRouter = Router();
 
@@ -29,5 +31,9 @@ apiRouter.use('/projects', projectRouter);
 apiRouter.use('/workspaces/:workspaceId/tasks', taskRouter);
 apiRouter.use('/projects/:projectId/tasks', taskRouter);
 apiRouter.use('/tasks', taskRouter);
+
+// Real-Time Chat Messages & Notifications
+apiRouter.use('/workspaces/:workspaceId/messages', messageRouter);
+apiRouter.use('/notifications', notificationRouter);
 
 export default apiRouter;

@@ -20,6 +20,7 @@ import KanbanBoardPage from './pages/KanbanBoardPage.jsx';
 import MyTasksPage from './pages/MyTasksPage.jsx';
 import TeamMembersPage from './pages/TeamMembersPage.jsx';
 import CalendarPage from './pages/CalendarPage.jsx';
+import ChatPage from './pages/ChatPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import ProfileSettingsPage from './pages/ProfileSettingsPage.jsx';
 import WorkspaceSettingsPage from './pages/WorkspaceSettingsPage.jsx';
@@ -48,6 +49,7 @@ export const App = () => {
             <Route path="/projects/:id" element={<ProjectDetailsPage />} />
             <Route path="/projects/:id/board" element={<KanbanBoardPage />} />
             <Route path="/board" element={<KanbanBoardPage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/my-tasks" element={<MyTasksPage />} />
             <Route path="/members" element={<TeamMembersPage />} />
             <Route path="/calendar" element={<CalendarPage />} />

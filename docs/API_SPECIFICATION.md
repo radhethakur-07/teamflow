@@ -120,14 +120,62 @@ All API endpoints follow a predictable JSON response structure.
 | `POST` | `/api/v1/tasks/:taskId/comments` | Post comment to task and record audit activity | Member |
 | `DELETE`| `/api/v1/tasks/:taskId/comments/:commentId` | Delete comment (author or admin) | Member |
 
-### 2.6 Activities & Audit Trails
+### 2.6 Real-Time Chat & Direct Messaging (`/api/v1/workspaces/:workspaceId/messages`)
+| Method | Endpoint | Description | Role Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/workspaces/:workspaceId/messages` | Fetch message history by `channelId` or `recipientId` | Member |
+| `POST` | `/api/v1/workspaces/:workspaceId/messages` | Send message with server broadcast to room | Member |
+| `POST` | `/api/v1/workspaces/:workspaceId/messages/read` | Mark messages in chat/channel as read | Member |
+| `GET` | `/api/v1/workspaces/:workspaceId/messages/unread-counts` | Retrieve unread count breakdown per channel & direct recipient | Member |
+
+### 2.7 Notifications (`/api/v1/notifications`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :---: |
+| `GET` | `/api/v1/notifications` | Retrieve user notification inbox | Yes |
+| `PATCH`| `/api/v1/notifications/:id/read` | Mark single notification as read | Yes |
+| `POST` | `/api/v1/notifications/mark-all-read` | Mark all user notifications as read | Yes |
+
+### 2.8 Activities & Audit Trails
 | Method | Endpoint | Description | Role Required |
 | :--- | :--- | :--- | :---: |
 | `GET` | `/api/v1/workspaces/:workspaceId/activities` | Chronological activity log for workspace | Member |
 | `GET` | `/api/v1/projects/:projectId/activities` | Chronological activity log for project | Member |
 
-### 2.7 Health & Readiness Probes
+### 2.9 Health & Readiness Probes
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
 | `GET` | `/api/health` | Liveness probe: returns server uptime, memory usage, node version | No |
 | `GET` | `/api/health/ready` | Readiness probe: checks active MongoDB connection state (200/503) | No |
+
+---
+
+## 3. Real-Time Socket.IO Protocol Specification
+
+### 3.1 Handshake Authentication & Room Access Policy
+- **Connection Handshake:**
+  - Token passed in `auth.token` or `headers.authorization` (`Bearer <token>`).
+  - Sockets without valid access tokens are immediately rejected with `AUTHENTICATION_REQUIRED` or `INVALID_TOKEN`.
+- **Authorized Room Syntax & Verification:**
+  - `workspace:<workspaceId>`: Validated against active `WorkspaceMember` status.
+  - `project:<projectId>`: Validated against workspace membership & private project access.
+  - `direct:<userA>_<userB>`: Validated against shared workspace membership.
+  - `user:<userId>`: Self-only private notification inbox.
+
+### 3.2 Real-Time Event Matrix
+| Direction | Event Name | Payload Summary | Description |
+| :--- | :--- | :--- | :--- |
+| Client &rarr; Server | `room:join` | `{ room: string }` | Request to enter room with membership validation |
+| Client &rarr; Server | `room:leave` | `{ room: string }` | Leave room |
+| Client &rarr; Server | `message:send` | `{ workspaceId, recipientId, channelId, content, clientTempId }` | Send chat message; persists in DB & broadcasts |
+| Server &rarr; Client | `message:received` | `{ room, message }` | Real-time chat message broadcast to room |
+| Client &rarr; Server | `typing:start` | `{ room }` | Emits typing state to other room members |
+| Client &rarr; Server | `typing:stop` | `{ room }` | Cancels typing state |
+| Server &rarr; Client | `typing:update` | `{ room, userId, userName, isTyping }` | Live typing indicator broadcast |
+| Client &rarr; Server | `message:read` | `{ room, messageIds: string[] }` | Marks messages read and updates database |
+| Server &rarr; Client | `message:read_receipt` | `{ room, readerId, messageIds }` | Broadcasts double-check read status |
+| Server &rarr; Client | `presence:update` | `{ userId, status: 'online' \| 'offline' }` | Multi-tab connection presence broadcast |
+| Server &rarr; Client | `task:created` | `{ eventType, workspaceId, projectId, task }` | Live task creation sync |
+| Server &rarr; Client | `task:moved` | `{ eventType, workspaceId, projectId, task }` | Live Kanban board drag-and-drop sync |
+| Server &rarr; Client | `task:updated` | `{ eventType, workspaceId, projectId, task }` | Live task details/checklist update |
+| Server &rarr; Client | `task:deleted` | `{ eventType, workspaceId, projectId, task }` | Live task removal sync |
+| Server &rarr; Client | `notification:new` | Notification object | Instant personal push notification |

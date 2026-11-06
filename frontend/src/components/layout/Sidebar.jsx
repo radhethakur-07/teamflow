@@ -15,9 +15,11 @@ import {
   ChevronRight,
   ChevronDown,
   Building2,
-  Check
+  Check,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
+import { useSocket } from '../../context/SocketContext.jsx';
 import Avatar from '../common/Avatar.jsx';
 import Modal from '../common/Modal.jsx';
 import Input from '../common/Input.jsx';
@@ -26,7 +28,9 @@ import { cn } from '../../utils/cn.js';
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMobile }) => {
   const { workspace, workspaces, switchWorkspace, createWorkspace, projects, currentUser, notifications } = useApp();
+  const { unreadCounts } = useSocket();
   const unreadNotifs = notifications.filter((n) => !n.read).length;
+  const unreadMsgs = unreadCounts?.totalUnread || 0;
 
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isCreateWsOpen, setIsCreateWsOpen] = useState(false);
@@ -38,6 +42,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onCloseMo
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/projects', label: 'Projects', icon: FolderKanban },
     { to: '/board', label: 'Kanban Board', icon: Kanban },
+    { to: '/chat', label: 'Team Chat', icon: MessageSquare, badge: unreadMsgs > 0 ? unreadMsgs : null },
     { to: '/my-tasks', label: 'My Tasks', icon: CheckSquare },
     { to: '/members', label: 'Team Members', icon: Users },
     { to: '/calendar', label: 'Calendar', icon: Calendar },

@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { store } from './store/index.js';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { SocketProvider } from './context/SocketContext.jsx';
 import { AppProvider } from './context/AppContext.jsx';
 import App from './App.jsx';
 import './index.css';
@@ -13,9 +14,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <ToastProvider>
         <AuthProvider>
-          <AppProvider>
-            <App />
-          </AppProvider>
+          <SocketProvider>
+            <AppProvider>
+              <App />
+            </AppProvider>
+          </SocketProvider>
         </AuthProvider>
       </ToastProvider>
     </Provider>

@@ -1,6 +1,8 @@
 import { Task } from '../models/Task.js';
 import { Project } from '../models/Project.js';
 import { ActivityLog } from '../models/ActivityLog.js';
+import { broadcastTaskEvent } from '../sockets/index.js';
+import { createNotification } from './notification.service.js';
 
 export const createTask = async (projectId, taskData, actorId, workspaceId) => {
   // If orderIndex not supplied, place at top
@@ -29,7 +31,29 @@ export const createTask = async (projectId, taskData, actorId, workspaceId) => {
     details: { title: task.title, column: task.column, priority: task.priority },
   });
 
-  return task.populate('assigneeIds', 'name email avatarUrl');
+  const populatedTask = await task.populate('assigneeIds', 'name email avatarUrl');
+
+  // Broadcast real-time creation
+  broadcastTaskEvent('task:created', { workspaceId, projectId, task: populatedTask });
+
+  // Real-time assignment notifications for other assignees
+  if (Array.isArray(task.assigneeIds)) {
+    for (const assigneeId of task.assigneeIds) {
+      const aId = assigneeId._id ? assigneeId._id.toString() : assigneeId.toString();
+      if (aId !== actorId.toString()) {
+        createNotification({
+          userId: aId,
+          workspaceId,
+          type: 'ASSIGNED',
+          title: 'New Task Assigned',
+          message: `You were assigned to "${task.title}"`,
+          link: `/board?project=${projectId}`,
+        }).catch((e) => console.error('[Notification Error]:', e.message));
+      }
+    }
+  }
+
+  return populatedTask;
 };
 
 export const getProjectTasks = async (projectId, workspaceId, { column, priority, search } = {}) => {
@@ -163,6 +187,12 @@ export const updateTask = async (taskId, workspaceId, updateData, actorId) => {
     details: updateData,
   });
 
+  broadcastTaskEvent('task:updated', {
+    workspaceId,
+    projectId: task.projectId?._id || task.projectId,
+    task,
+  });
+
   return task;
 };
 
@@ -192,7 +222,15 @@ export const moveTask = async (taskId, workspaceId, column, newOrderIndex, actor
     details: { from: previousColumn, to: column, newOrderIndex: task.orderIndex },
   });
 
-  return task.populate('assigneeIds', 'name email avatarUrl');
+  const populatedTask = await task.populate('assigneeIds', 'name email avatarUrl');
+
+  broadcastTaskEvent('task:moved', {
+    workspaceId,
+    projectId: task.projectId,
+    task: populatedTask,
+  });
+
+  return populatedTask;
 };
 
 export const deleteTask = async (taskId, workspaceId, actorId) => {
@@ -218,6 +256,12 @@ export const deleteTask = async (taskId, workspaceId, actorId) => {
     details: { title: task.title },
   });
 
+  broadcastTaskEvent('task:deleted', {
+    workspaceId,
+    projectId: task.projectId,
+    task: { _id: taskId, id: taskId },
+  });
+
   return { success: true };
 };
 
@@ -232,6 +276,12 @@ export const addChecklistItem = async (taskId, workspaceId, title) => {
 
   task.checklist.push({ title, completed: false });
   await task.save();
+
+  broadcastTaskEvent('task:updated', {
+    workspaceId,
+    projectId: task.projectId,
+    task,
+  });
 
   return task.checklist[task.checklist.length - 1];
 };
@@ -257,6 +307,12 @@ export const toggleChecklistItem = async (taskId, workspaceId, itemId) => {
   item.completedAt = item.completed ? new Date() : null;
   await task.save();
 
+  broadcastTaskEvent('task:updated', {
+    workspaceId,
+    projectId: task.projectId,
+    task,
+  });
+
   return item;
 };
 
@@ -271,6 +327,12 @@ export const deleteChecklistItem = async (taskId, workspaceId, itemId) => {
 
   task.checklist.pull({ _id: itemId });
   await task.save();
+
+  broadcastTaskEvent('task:updated', {
+    workspaceId,
+    projectId: task.projectId,
+    task,
+  });
 
   return { success: true };
 };

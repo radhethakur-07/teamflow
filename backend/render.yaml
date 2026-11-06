@@ -22,3 +22,5 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: BREVO_API_KEY
+        sync: false

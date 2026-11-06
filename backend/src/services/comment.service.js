@@ -1,6 +1,8 @@
 import { Comment } from '../models/Comment.js';
 import { Task } from '../models/Task.js';
 import { ActivityLog } from '../models/ActivityLog.js';
+import { getIO } from '../sockets/index.js';
+import { createNotification } from './notification.service.js';
 
 export const getTaskComments = async (taskId, workspaceId) => {
   const task = await Task.findOne({ _id: taskId, workspaceId, isArchived: false });
@@ -42,7 +44,28 @@ export const createComment = async ({ taskId, workspaceId, content, authorId }) 
     details: { commentId: comment._id, snippet: content.slice(0, 80) },
   });
 
-  return comment.populate('authorId', 'name email avatarUrl jobTitle');
+  const populatedComment = await comment.populate('authorId', 'name email avatarUrl jobTitle');
+
+  const io = getIO();
+  if (io && task.projectId) {
+    io.to(`project:${task.projectId.toString()}`).emit('comment:created', {
+      taskId,
+      comment: populatedComment,
+    });
+  }
+
+  if (task.creatorId && task.creatorId.toString() !== authorId.toString()) {
+    createNotification({
+      userId: task.creatorId,
+      workspaceId,
+      type: 'MENTIONED',
+      title: 'New Comment on Your Task',
+      message: `Someone commented on "${task.title}": "${content.slice(0, 60)}"`,
+      link: `/board?project=${task.projectId}`,
+    }).catch((e) => console.error('[Comment Notification Error]:', e.message));
+  }
+
+  return populatedComment;
 };
 
 export const deleteComment = async (commentId, workspaceId, userId, userRole) => {

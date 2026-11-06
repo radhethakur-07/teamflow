@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
+import { initSocketServer } from './sockets/index.js';
 
 const server = http.createServer(app);
 
@@ -11,21 +12,16 @@ const io = new Server(server, {
   cors: {
     origin: config.cors.allowedOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    credentials: true
+    credentials: true,
   },
   transports: ['websocket', 'polling'],
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
 });
 
-// Basic Socket connection handler
-io.on('connection', (socket) => {
-  console.log(`[Socket.IO] Client connected: ${socket.id}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`);
-  });
-});
+// Initialize Socket.IO with auth, rooms, presence & chat handlers
+initSocketServer(io);
+app.set('io', io);
 
 // Start Server Function
 const startServer = async () => {
@@ -50,7 +46,7 @@ const startServer = async () => {
 // Graceful Shutdown
 const gracefulShutdown = async (signal) => {
   console.log(`\n[Server] Received ${signal}. Initiating graceful shutdown...`);
-  
+
   io.close(() => {
     console.log('[Socket.IO] Socket server closed.');
   });

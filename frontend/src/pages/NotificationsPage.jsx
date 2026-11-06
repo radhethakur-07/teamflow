@@ -81,11 +81,13 @@ export const NotificationsPage = () => {
         {filteredNotifications.length > 0 ? (
           filteredNotifications.map((n) => {
             const Icon = getTypeIcon(n.type);
+            const notifId = n._id || n.id;
+            const notifTime = n.time || (n.createdAt ? new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent');
 
             return (
               <div
-                key={n.id}
-                onClick={() => markNotificationRead(n.id)}
+                key={notifId}
+                onClick={() => markNotificationRead(notifId)}
                 className={`p-4 flex items-start gap-3.5 hover:bg-warm-50/70 transition-colors cursor-pointer group ${
                   !n.read ? 'bg-terracotta-50/20' : ''
                 }`}
@@ -107,7 +109,7 @@ export const NotificationsPage = () => {
                     </p>
                     <span className="text-[10px] text-warm-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {n.time}
+                      {notifTime}
                     </span>
                   </div>
 

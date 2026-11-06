@@ -18,6 +18,7 @@ import {
   Layers
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
+import { useSocket } from '../context/SocketContext.jsx';
 import taskService from '../services/taskService.js';
 import TaskCard from '../components/domain/TaskCard.jsx';
 import Drawer from '../components/common/Drawer.jsx';
@@ -43,6 +44,8 @@ export const KanbanBoardPage = () => {
     currentUser 
   } = useApp();
 
+  const { joinRoom, leaveRoom, socket } = useSocket();
+
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [selectedTask, setSelectedTask] = useState(null);
@@ -61,6 +64,37 @@ export const KanbanBoardPage = () => {
       if (match) setActiveProject(match);
     }
   }, [searchParams, projects, setActiveProject]);
+
+  // Join project real-time socket room
+  useEffect(() => {
+    const projId = activeProject?._id || activeProject?.id;
+    if (projId) {
+      joinRoom(`project:${projId}`);
+      return () => {
+        leaveRoom(`project:${projId}`);
+      };
+    }
+  }, [activeProject, joinRoom, leaveRoom]);
+
+  // Real-time task comments listener
+  useEffect(() => {
+    if (!socket || !selectedTask) return;
+
+    const handleNewComment = ({ taskId, comment }) => {
+      const selectedId = selectedTask._id || selectedTask.id;
+      if (taskId === selectedId) {
+        setTaskComments((prev) => {
+          if (prev.some((c) => (c._id || c.id) === (comment._id || comment.id))) return prev;
+          return [...prev, comment];
+        });
+      }
+    };
+
+    socket.on('comment:created', handleNewComment);
+    return () => {
+      socket.off('comment:created', handleNewComment);
+    };
+  }, [socket, selectedTask]);
 
   // Load comments when selected task opens
   useEffect(() => {

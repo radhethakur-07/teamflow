@@ -126,5 +126,17 @@ npm run build:frontend
   - [x] Activity history & audit trail: workspace & project chronological event logs
   - [x] Multi-tenant IDOR defense: external workspace users strictly forbidden (HTTP 403) from accessing or modifying private tasks and projects
   - [x] 25/25 automated backend test cases passing across auth, models, REST endpoints, and Milestone 5 core workflows
-- [ ] **Milestone 6: Real-Time WebSockets & Live Kanban Collaboration**
+- [x] **Milestone 6: Real-Time WebSockets & Live Team Collaboration**
+  - [x] Socket.IO connection handshake with strict JWT authentication
+  - [x] Authorized room membership verification: workspace, project, direct user, and personal notification rooms
+  - [x] Multi-tab connection presence management with live online/offline tracking
+  - [x] Real-time direct messaging and project-specific chat channels
+  - [x] Persistent message history in MongoDB with pagination
+  - [x] Real-time typing indicators with auto-timeout and animated three-dot pulse
+  - [x] Read receipts with database persistence and double-check UI indicators
+  - [x] Real-time task synchronization: cards move/update live across all connected browsers on drag-and-drop
+  - [x] Real-time push notifications for task assignments and mentions
+  - [x] Unread message counts and channel badges
+  - [x] Polished editorial chat interface (`/chat`) with responsive mobile channel drawer
+  - [x] 37/37 automated backend tests passing across models, auth, core workflows, and real-time socket events
 - [ ] **Milestone 7: Production Cloud Deployment, Hardening & Final Verification**

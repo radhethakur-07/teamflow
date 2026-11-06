@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
+import { useSocket } from './SocketContext.jsx';
 import workspaceService from '../services/workspaceService.js';
 import teamService from '../services/teamService.js';
 import projectService from '../services/projectService.js';
 import taskService from '../services/taskService.js';
+import notificationService from '../services/notificationService.js';
 
 const AppContext = createContext(null);
 
 export const AppProvider = ({ children }) => {
   const { user, isAuthenticated, currentWorkspace, workspaces, switchWorkspace: authSwitchWorkspace } = useAuth();
   const toast = useToast();
+  const { onTaskEvent, onNotification } = useSocket();
 
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [members, setMembers] = useState([]);
@@ -19,16 +22,40 @@ export const AppProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 'notif-1',
-      title: 'Welcome to TeamFlow',
-      message: 'Your multi-tenant workspace has been provisioned.',
-      time: 'Just now',
-      read: false,
-      type: 'system',
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  // Subscribe to real-time socket events for live task updates and notifications
+  useEffect(() => {
+    const unsubTask = onTaskEvent((eventType, payload) => {
+      const { task } = payload || {};
+      if (!task) return;
+
+      const targetId = task._id || task.id;
+
+      if (eventType === 'task:created') {
+        setTasks((prev) => {
+          if (prev.some((t) => (t._id || t.id) === targetId)) return prev;
+          return [task, ...prev];
+        });
+      } else if (eventType === 'task:moved' || eventType === 'task:updated') {
+        setTasks((prev) =>
+          prev.map((t) => ((t._id || t.id) === targetId ? { ...t, ...task } : t))
+        );
+      } else if (eventType === 'task:deleted') {
+        setTasks((prev) => prev.filter((t) => (t._id || t.id) !== targetId));
+      }
+    });
+
+    const unsubNotif = onNotification((notif) => {
+      setNotifications((prev) => [notif, ...prev]);
+      toast.info(notif.title || 'New notification received');
+    });
+
+    return () => {
+      unsubTask();
+      unsubNotif();
+    };
+  }, [onTaskEvent, onNotification, toast]);
 
   // Sync active workspace from auth state or localStorage
   useEffect(() => {
@@ -50,20 +77,23 @@ export const AppProvider = ({ children }) => {
     setIsLoading(true);
 
     try {
-      const [membersData, teamsData, projectsData, tasksData] = await Promise.all([
+      const [membersData, teamsData, projectsData, tasksData, notifsRes] = await Promise.all([
         workspaceService.getMembers(targetWorkspaceId).catch(() => []),
         teamService.getTeams(targetWorkspaceId).catch(() => []),
         projectService.getProjects(targetWorkspaceId).catch(() => ({ projects: [] })),
         taskService.getAllWorkspaceTasks(targetWorkspaceId).catch(() => ({ tasks: [] })),
+        notificationService.getMyNotifications().catch(() => ({ data: [] })),
       ]);
 
       const loadedProjects = projectsData.projects || projectsData || [];
       const loadedTasks = tasksData.tasks || tasksData || [];
+      const loadedNotifs = notifsRes.data || [];
 
       setMembers(membersData || []);
       setTeams(teamsData || []);
       setProjects(loadedProjects);
       setTasks(loadedTasks);
+      setNotifications(loadedNotifs);
 
       // Set active project if not set or if current one not in list
       setActiveProject((prev) => {
@@ -389,14 +419,24 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const markAllNotificationsRead = () => {
+  const markAllNotificationsRead = async () => {
+    try {
+      await notificationService.markAllRead();
+    } catch (e) {
+      console.error('[MarkAllRead Error]', e);
+    }
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     toast.info('All notifications marked as read');
   };
 
-  const markNotificationRead = (id) => {
+  const markNotificationRead = async (id) => {
+    try {
+      await notificationService.markNotificationRead(id);
+    } catch (e) {
+      console.error('[MarkNotificationRead Error]', e);
+    }
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.map((n) => ((n._id || n.id) === id ? { ...n, read: true } : n))
     );
   };
 
