@@ -53,14 +53,22 @@ All API endpoints follow a predictable JSON response structure.
 
 ## 2. API Endpoint Matrix
 
-### 2.1 Authentication & Profile (`/api/v1/auth` & `/api/v1/users`)
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :---: |
-| `POST` | `/api/v1/auth/register` | Register user & auto-provision default workspace | No |
-| `POST` | `/api/v1/auth/login` | Authenticate with email/password; returns JWTs | No |
-| `POST` | `/api/v1/auth/refresh-token`| Rotate short-lived access token with refresh token | No |
-| `GET` | `/api/v1/auth/me` | Fetch authenticated user profile & active workspace list | Yes |
-| `PUT` | `/api/v1/auth/password` | Update account password with current password verification | Yes |
+### 2.1 Authentication & Profile (`/api/v1/auth`)
+| Method | Endpoint | Description | Auth Required | Cookie / Header |
+| :--- | :--- | :--- | :---: | :--- |
+| `POST` | `/api/v1/auth/register` | Register user, send Brevo verification OTP, set HttpOnly refresh cookie | No | Sets `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/verify-email` | Validate 6-digit email confirmation code | No | - |
+| `POST` | `/api/v1/auth/resend-verification` | Resend 6-digit verification code with rate limiting | No | - |
+| `POST` | `/api/v1/auth/login` | Authenticate password / Brevo OTP challenge; set HttpOnly cookie | No | Sets `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/login/otp` | Complete two-factor sign-in with 6-digit verification code | No | Sets `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/refresh-token` | Rotate refresh token with reuse detection; rotate HttpOnly cookie | No (Cookie) | Cookie: `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/logout` | Revoke active refresh token in database & clear HttpOnly cookie | No (Cookie) | Clears `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/logout-all` | Revoke all active sessions across all devices for the user | Yes | Clears `teamflow_refresh_token` |
+| `POST` | `/api/v1/auth/forgot-password` | Single-use password reset OTP via Brevo (anti-enumeration) | No | - |
+| `POST` | `/api/v1/auth/reset-password` | Validate OTP, update password hash, revoke all existing sessions | No | - |
+| `GET` | `/api/v1/auth/me` | Fetch authenticated user profile & active workspace list | Yes | `Authorization: Bearer <token>` |
+| `PUT` | `/api/v1/auth/me` | Update user profile fields (name, avatar, jobTitle, bio) | Yes | `Authorization: Bearer <token>` |
+| `PUT` | `/api/v1/auth/password` | Update account password with current password verification | Yes | `Authorization: Bearer <token>` |
 
 ### 2.2 Workspaces (`/api/v1/workspaces`)
 | Method | Endpoint | Description | Role Required |

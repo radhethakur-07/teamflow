@@ -38,6 +38,43 @@ const userSchema = new mongoose.Schema(
       default: 'active',
       index: true,
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationOtpHash: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+    loginOtpHash: {
+      type: String,
+      select: false,
+    },
+    loginOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    passwordResetOtpHash: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
     jobTitle: {
       type: String,
       trim: true,
@@ -61,10 +98,16 @@ userSchema.methods.verifyPassword = async function (password) {
   return comparePassword(password, this.passwordHash);
 };
 
-// Safe JSON serialization (strip passwordHash and internal properties)
+// Safe JSON serialization (strip passwordHash, OTPs, and internal properties)
 userSchema.methods.toSafeJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
+  delete obj.emailVerificationOtpHash;
+  delete obj.emailVerificationExpires;
+  delete obj.loginOtpHash;
+  delete obj.loginOtpExpires;
+  delete obj.passwordResetOtpHash;
+  delete obj.passwordResetExpires;
   delete obj.__v;
   return obj;
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Menu, Search, Bell, Plus, Sparkles, Command } from 'lucide-react';
+import { Menu, Search, Bell, Plus, Command } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../common/Avatar.jsx';
 import Button from '../common/Button.jsx';
 import NotificationDropdown from './NotificationDropdown.jsx';
@@ -8,10 +9,13 @@ import ProfileDropdown from './ProfileDropdown.jsx';
 
 export const Header = ({ onOpenMobileSidebar, onOpenSearch, onOpenNewTask }) => {
   const { notifications, currentUser } = useApp();
+  const { user } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const displayName = user?.name || currentUser?.name || 'Jane Doe';
+  const displayAvatar = user?.avatarUrl || currentUser?.avatar;
 
   return (
     <header className="sticky top-0 z-20 bg-warm-50/90 backdrop-blur-md border-b border-warm-200 px-4 md:px-8 py-3 flex items-center justify-between gap-4">
@@ -87,8 +91,8 @@ export const Header = ({ onOpenMobileSidebar, onOpenSearch, onOpenNewTask }) => 
             aria-label="User profile menu"
           >
             <Avatar
-              src={currentUser.avatar}
-              name={currentUser.name}
+              src={displayAvatar}
+              name={displayName}
               size="sm"
               status="online"
             />

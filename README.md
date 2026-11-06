@@ -100,10 +100,19 @@ npm run build:frontend
 - [x] **Milestone 3: Modular & Scalable Express Backend & 12 Mongoose Collections**
   - [x] 12 Mongoose models with ObjectId refs, compound indexes, and timestamps
   - [x] Zod request validation middleware (`validateRequest`)
-  - [x] Secure JWT authentication with short-lived access and refresh rotation
   - [x] 4-tier RBAC authorization middleware (`requireWorkspaceRole`)
   - [x] REST API modules for Users, Workspaces, Teams, Projects, and Tasks
   - [x] Health (`/api/health`) and readiness (`/api/health/ready`) probes
-  - [x] Complete automated test suite (100% pass across models and REST endpoints)
-- [ ] **Milestone 4: Real-Time Sockets, Projects & Live Kanban Board Synchronization**
-- [ ] **Milestone 5: Production Deployment, Hardening & End-to-End Verification**
+- [x] **Milestone 4: Production-Quality Authentication & Security Pipeline**
+  - [x] Brevo (Sendinblue) transactional email API integration with simulated dev fallback
+  - [x] 6-digit email verification OTP on registration
+  - [x] Two-factor authentication & login OTP challenge
+  - [x] HttpOnly, SameSite cookie-based refresh token rotation
+  - [x] Refresh token reuse detection & immediate family lineage revocation
+  - [x] Expiring single-use password reset OTP with anti-user-enumeration
+  - [x] Logout and global session invalidation across all devices
+  - [x] Redux auth slice, AuthContext, and Axios concurrency-safe 401 refresh queue
+  - [x] Frontend protected routes (`<ProtectedRoute />`), password visibility toggles, and interactive confirmation modals
+  - [x] 14/14 automated backend test cases passing across models, auth, and REST endpoints
+- [ ] **Milestone 5: Real-Time Sockets, Projects & Live Kanban Board Synchronization**
+- [ ] **Milestone 6: Production Deployment, Hardening & End-to-End Verification**

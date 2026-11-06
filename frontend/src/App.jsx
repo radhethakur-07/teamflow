@@ -1,17 +1,18 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Layout
+// Layout & Route Protection
 import AppLayout from './components/layout/AppLayout.jsx';
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
-// Public & Onboarding Pages
+// Public Authentication Pages
 import LandingPage from './pages/LandingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import OnboardingPage from './pages/OnboardingPage.jsx';
 
-// Authenticated Workspace Pages
+// Authenticated Application Shell Pages
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProjectsPage from './pages/ProjectsPage.jsx';
 import ProjectDetailsPage from './pages/ProjectDetailsPage.jsx';
@@ -30,28 +31,31 @@ export const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Marketing & Authentication Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
 
-        {/* Authenticated Application Shell Routes */}
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:id" element={<ProjectDetailsPage />} />
-          <Route path="/projects/:id/board" element={<KanbanBoardPage />} />
-          <Route path="/board" element={<KanbanBoardPage />} />
-          <Route path="/my-tasks" element={<MyTasksPage />} />
-          <Route path="/members" element={<TeamMembersPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/settings/profile" element={<ProfileSettingsPage />} />
-          <Route path="/settings/workspace" element={<WorkspaceSettingsPage />} />
-          <Route path="/status" element={<ConnectionTestPage />} />
+        {/* Protected Application Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+            <Route path="/projects/:id/board" element={<KanbanBoardPage />} />
+            <Route path="/board" element={<KanbanBoardPage />} />
+            <Route path="/my-tasks" element={<MyTasksPage />} />
+            <Route path="/members" element={<TeamMembersPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+            <Route path="/settings/workspace" element={<WorkspaceSettingsPage />} />
+            <Route path="/status" element={<ConnectionTestPage />} />
+          </Route>
         </Route>
 
         {/* Catch-all fallback */}

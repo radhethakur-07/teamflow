@@ -7,6 +7,8 @@ export const Input = React.forwardRef(({
   helperText,
   leftIcon: LeftIcon,
   rightIcon: RightIcon,
+  rightElement,
+  onRightIconClick,
   className = '',
   id,
   type = 'text',
@@ -41,7 +43,7 @@ export const Input = React.forwardRef(({
           className={cn(
             "w-full bg-white text-warm-900 border rounded-lg py-2 text-sm transition-all duration-150 placeholder:text-warm-400 focus:outline-none focus:ring-2 disabled:bg-warm-100 disabled:cursor-not-allowed",
             LeftIcon ? "pl-9" : "pl-3.5",
-            RightIcon ? "pr-9" : "pr-3.5",
+            RightIcon || rightElement ? "pr-10" : "pr-3.5",
             error
               ? "border-terracotta-500 focus:border-terracotta-500 focus:ring-terracotta-200"
               : "border-warm-300 hover:border-warm-400 focus:border-terracotta-500 focus:ring-terracotta-100",
@@ -50,11 +52,21 @@ export const Input = React.forwardRef(({
           {...props}
         />
 
-        {RightIcon && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-warm-400">
+        {rightElement ? (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            {rightElement}
+          </div>
+        ) : RightIcon ? (
+          <div
+            className={cn(
+              "absolute inset-y-0 right-0 pr-3 flex items-center text-warm-400",
+              onRightIconClick ? "cursor-pointer hover:text-warm-600 transition-colors" : "pointer-events-none"
+            )}
+            onClick={onRightIconClick}
+          >
             <RightIcon className="w-4 h-4" />
           </div>
-        )}
+        ) : null}
       </div>
 
       {error ? (

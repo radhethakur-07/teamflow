@@ -207,8 +207,18 @@ To avoid global event storms, WebSockets are strictly scoped using rooms:
 ## 6. Security Architecture & Threat Mitigation
 
 ### 6.1 Authentication & Session Management
-- **Token Strategy:** Short-lived JWT Access Tokens (15-minute expiration) paired with cryptographically secure Refresh Tokens (7-day sliding expiration, stored securely or in HTTP-only SameSite cookies).
-- **Password Protection:** Passwords hashed using `bcrypt` with a minimum of 12 salt rounds. Plaintext passwords are never logged, serialized, or returned in API responses.
+- **Token Architecture:**
+  - **Access Tokens:** Short-lived JWT (15-minute expiration) carrying `{ userId, email }`, passed via `Authorization: Bearer <token>` in-memory.
+  - **Refresh Tokens:** Long-lived (7-day TTL), signed JWT carrying `{ userId, familyId, tokenId }`. Stored exclusively in secure, HttpOnly, SameSite cookies (`teamflow_refresh_token`). Refresh tokens are never exposed in JSON response bodies.
+  - **Rotation & Reuse Detection:** Every refresh operation rotates the token within its `familyId` lineage. If an already-rotated or revoked token is presented again (indicating token theft or replay attack), the system immediately detects reuse and revokes ALL tokens in that family lineage (`403 REFRESH_TOKEN_REUSE_DETECTED`).
+  - **Session Model:** Backed by the `RefreshToken` Mongoose collection with MongoDB TTL auto-cleanup indexes.
+- **Transactional Email & Brevo API:**
+  - Integrated with Brevo (Sendinblue) transactional email API (`https://api.brevo.com/v3/smtp/email`) for email verification, two-factor authentication OTP, and single-use password recovery.
+  - Graceful dev/test fallback: When `BREVO_API_KEY` is omitted, the service cleanly logs generated 6-digit OTP codes to the server console with full diagnostic details without failing.
+- **Password Protection & Anti-Enumeration:**
+  - Passwords hashed using `bcrypt` (12 salt rounds).
+  - Anti-user-enumeration on `/auth/forgot-password` and `/auth/resend-verification` (always returns consistent generic success envelopes).
+  - Password reset automatically invalidates all active sessions for the user.
 
 ### 6.2 Multi-Tenant Data Isolation
 To prevent cross-tenant leakage:

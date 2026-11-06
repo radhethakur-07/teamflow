@@ -10,3 +10,4 @@ export { Message } from './Message.js';
 export { Invitation } from './Invitation.js';
 export { Attachment } from './Attachment.js';
 export { ActivityLog } from './ActivityLog.js';
+export { RefreshToken } from './RefreshToken.js';
