@@ -18,7 +18,12 @@ export const createTask = async (projectId, taskData, actorId, workspaceId) => {
     projectId,
     creatorId: actorId,
     orderIndex: taskData.orderIndex || nextOrderIndex,
-    assigneeIds: taskData.assigneeIds?.length ? taskData.assigneeIds : [actorId],
+    assigneeIds:
+      taskData.assigneeIds && taskData.assigneeIds.length > 0
+        ? taskData.assigneeIds
+        : taskData.assigneeId
+        ? [taskData.assigneeId]
+        : [actorId],
     ...taskData,
   });
 

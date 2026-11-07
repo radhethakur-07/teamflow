@@ -10,13 +10,14 @@ export const requireWorkspaceRole = (allowedRoles = []) => {
       req.headers['x-workspace-id'];
 
     // Resolve from project context if present
+    const candidateProjectId = req.params.projectId || req.body?.projectId;
     if (
       !workspaceId &&
-      req.params.projectId &&
-      mongoose.Types.ObjectId.isValid(req.params.projectId)
+      candidateProjectId &&
+      mongoose.Types.ObjectId.isValid(candidateProjectId)
     ) {
       const { Project } = await import('../models/Project.js');
-      const project = await Project.findById(req.params.projectId).select('workspaceId');
+      const project = await Project.findById(candidateProjectId).select('workspaceId');
       if (project) {
         workspaceId = project.workspaceId.toString();
         req.project = project;

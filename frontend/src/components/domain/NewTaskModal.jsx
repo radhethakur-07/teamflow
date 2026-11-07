@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import Modal from '../common/Modal.jsx';
 import Input from '../common/Input.jsx';
@@ -18,21 +18,43 @@ export const NewTaskModal = ({ isOpen, onClose }) => {
   );
   const [isLoading, setIsLoading] = useState(false);
 
+  // Synchronize default selected project whenever modal opens or active project/projects list updates
+  useEffect(() => {
+    if (isOpen) {
+      const currentValid = projectId && projects.some((p) => (p._id || p.id) === projectId);
+      if (!currentValid) {
+        const fallbackId =
+          activeProject?._id ||
+          activeProject?.id ||
+          (projects[0] ? projects[0]._id || projects[0].id : '');
+        if (fallbackId) setProjectId(fallbackId);
+      }
+    }
+  }, [isOpen, activeProject, projects, projectId]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const targetProjId = projectId || (activeProject?._id || activeProject?.id);
+    const targetProjId =
+      projectId ||
+      activeProject?._id ||
+      activeProject?.id ||
+      (projects[0] ? projects[0]._id || projects[0].id : '');
+
+    // Clean and validate assignee ID ensuring 24-character hex format
+    const cleanedAssigneeIds =
+      assigneeId && /^[0-9a-fA-F]{24}$/.test(assigneeId) ? [assigneeId] : undefined;
 
     setIsLoading(true);
     try {
       await addTask({
         title: title.trim(),
         description: description.trim(),
-        priority,
+        priority: priority.toLowerCase(),
         dueDate: dueDate || null,
         projectId: targetProjId,
-        assigneeIds: assigneeId ? [assigneeId] : undefined,
+        assigneeIds: cleanedAssigneeIds,
       });
 
       setTitle('');
@@ -41,26 +63,31 @@ export const NewTaskModal = ({ isOpen, onClose }) => {
       setAssigneeId('');
       onClose();
     } catch (err) {
-      console.error(err);
+      console.error('[CreateTask Error]', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const projectOptions = projects.map((p) => ({
-    value: p._id || p.id,
+    value: (p._id || p.id).toString(),
     label: p.name,
   }));
 
   const memberOptions = [
     { value: '', label: 'Unassigned (Self)' },
-    ...members.map((m) => {
-      const u = m.user || m;
-      return {
-        value: u._id || u.id,
-        label: `${u.name} (${u.email})`,
-      };
-    }),
+    ...members
+      .map((m) => {
+        const u = m.user || m;
+        const id = u?._id || u?.id;
+        const name = u?.name || m?.name || 'Member';
+        const email = u?.email || m?.email || '';
+        return {
+          value: id ? id.toString() : '',
+          label: email ? `${name} (${email})` : name,
+        };
+      })
+      .filter((opt) => opt.value),
   ];
 
   return (

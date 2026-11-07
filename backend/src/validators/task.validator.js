@@ -10,20 +10,48 @@ const columnEnum = z.enum([
   'completed',
 ]);
 
-export const createTaskSchema = z.object({
-  params: z.object({
-    projectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid project ID'),
-  }),
-  body: z.object({
-    title: z.string().min(1, 'Task title is required').max(250),
-    description: z.string().optional(),
-    column: columnEnum.default('todo'),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-    dueDate: z.string().optional().nullable(),
-    assigneeIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).optional(),
-    tags: z.array(z.string().max(30)).optional(),
-  }),
-});
+export const createTaskSchema = z
+  .object({
+    params: z
+      .object({
+        projectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid project ID').optional(),
+      })
+      .optional(),
+    body: z.object({
+      projectId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid project ID').optional(),
+      title: z.string().min(1, 'Task title is required').max(250),
+      description: z.string().nullish().default(''),
+      column: columnEnum.default('todo'),
+      priority: z
+        .string()
+        .transform((val) => val.toLowerCase())
+        .pipe(z.enum(['low', 'medium', 'high', 'urgent']))
+        .default('medium'),
+      dueDate: z
+        .union([z.string(), z.date(), z.null()])
+        .optional()
+        .transform((val) => (val === '' || val === undefined ? null : val)),
+      assigneeIds: z
+        .union([
+          z.string().regex(/^[0-9a-fA-F]{24}$/).transform((id) => [id]),
+          z.array(z.any()).transform((arr) =>
+            arr
+              .map((item) => (typeof item === 'string' ? item : item?._id || item?.id))
+              .filter((id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id))
+          ),
+        ])
+        .optional(),
+      assigneeId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+      tags: z.array(z.string().max(30)).optional(),
+    }),
+  })
+  .refine(
+    (data) => Boolean(data.params?.projectId || data.body?.projectId),
+    {
+      message: 'Project ID is required in route params or request body',
+      path: ['projectId'],
+    }
+  );
 
 export const updateTaskSchema = z.object({
   params: z.object({
@@ -31,11 +59,28 @@ export const updateTaskSchema = z.object({
   }),
   body: z.object({
     title: z.string().min(1).max(250).optional(),
-    description: z.string().optional(),
+    description: z.string().nullish().default(''),
     column: columnEnum.optional(),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-    dueDate: z.string().optional().nullable(),
-    assigneeIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).optional(),
+    priority: z
+      .string()
+      .transform((val) => val.toLowerCase())
+      .pipe(z.enum(['low', 'medium', 'high', 'urgent']))
+      .optional(),
+    dueDate: z
+      .union([z.string(), z.date(), z.null()])
+      .optional()
+      .transform((val) => (val === '' || val === undefined ? null : val)),
+    assigneeIds: z
+      .union([
+        z.string().regex(/^[0-9a-fA-F]{24}$/).transform((id) => [id]),
+        z.array(z.any()).transform((arr) =>
+          arr
+            .map((item) => (typeof item === 'string' ? item : item?._id || item?.id))
+            .filter((id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id))
+        ),
+      ])
+      .optional(),
+    assigneeId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
     tags: z.array(z.string().max(30)).optional(),
     isArchived: z.boolean().optional(),
   }),

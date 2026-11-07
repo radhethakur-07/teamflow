@@ -3,8 +3,9 @@ import { sendSuccess, sendCreated } from '../utils/apiResponse.js';
 import * as taskService from '../services/task.service.js';
 
 export const createTask = asyncHandler(async (req, res) => {
+  const projectId = req.params.projectId || req.body.projectId;
   const task = await taskService.createTask(
-    req.params.projectId,
+    projectId,
     req.body,
     req.user._id,
     req.workspaceId

@@ -114,13 +114,22 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Format standardized error payload
+    // Format standardized error payload with validation details unpack
+    const details = error.response?.data?.error?.details;
+    const detailMsg = Array.isArray(details) && details.length > 0
+      ? details.map((d) => (d.field ? `${d.field}: ${d.issue}` : d.issue || d.message)).join('; ')
+      : null;
+
+    const baseMessage =
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Network request failed';
+
     const customError = {
-      message:
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
-        error.message ||
-        'Network request failed',
+      message: detailMsg && !baseMessage.includes(detailMsg)
+        ? `${baseMessage} (${detailMsg})`
+        : baseMessage,
       code: error.response?.data?.error?.code || 'NETWORK_ERROR',
       status: error.response?.status || 0,
       details: error.response?.data?.error?.details || null,

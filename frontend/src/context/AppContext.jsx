@@ -298,11 +298,23 @@ export const AppProvider = ({ children }) => {
   // Task Operations with Optimistic UI and Rollback
   const addTask = async (taskData) => {
     const wsId = activeWorkspace?._id || activeWorkspace?.id;
-    const pId = taskData.projectId || activeProject?._id || activeProject?.id;
-    if (!wsId || !pId) return;
+    const pId =
+      taskData.projectId ||
+      activeProject?._id ||
+      activeProject?.id ||
+      (projects[0] ? projects[0]._id || projects[0].id : null);
+
+    if (!wsId) {
+      toast.error('No active workspace selected.');
+      return;
+    }
+    if (!pId) {
+      toast.error('Please create or select a project before adding a task.');
+      return;
+    }
 
     try {
-      const task = await taskService.createTask(pId, taskData, wsId);
+      const task = await taskService.createTask(pId, { ...taskData, projectId: pId }, wsId);
       toast.success(`Task "${task.title}" added to board!`);
       setTasks((prev) => [task, ...prev]);
 
