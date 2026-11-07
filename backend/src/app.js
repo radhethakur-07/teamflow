@@ -12,6 +12,10 @@ import { errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
 
+// Trust reverse proxy hops (Required on Render, Heroku, AWS ELB, Cloudflare)
+// Ensures express-rate-limit and req.ip accurately identify client IP from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Security Headers
 app.use(
   helmet({
