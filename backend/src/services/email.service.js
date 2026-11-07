@@ -13,15 +13,14 @@ export const generateNumericOtp = (length = 6) => {
 };
 
 /**
- * Dispatches an email via Brevo SMTP API or falls back to diagnostic console logging
+ * Dispatches an email via Brevo REST API (v3/smtp/email)
  * @param {Object} options
  * @param {string} options.toEmail
  * @param {string} [options.toName]
  * @param {string} options.subject
  * @param {string} options.htmlContent
  * @param {string} [options.textContent]
- * @param {string} [options.otpCode] For diagnostic logging when Brevo is not configured
- * @returns {Promise<{ delivered: boolean, simulated: boolean, messageId?: string, error?: string }>}
+ * @returns {Promise<{ delivered: boolean, messageId?: string, error?: string }>}
  */
 export const sendEmail = async ({
   toEmail,
@@ -29,34 +28,33 @@ export const sendEmail = async ({
   subject,
   htmlContent,
   textContent = '',
-  otpCode = '',
 }) => {
   const apiKey = config.brevo.apiKey;
 
-  // Graceful fallback when BREVO_API_KEY is not configured
-  if (!apiKey || apiKey.trim() === '' || apiKey.startsWith('your_')) {
-    console.log('\n' + '='.repeat(70));
-    console.log(' [BREVO TRANSACTIONAL EMAIL SERVICE - DEVELOPMENT FALLBACK]');
-    console.log(` To:        ${toName ? `${toName} <${toEmail}>` : toEmail}`);
-    console.log(` Subject:   ${subject}`);
-    if (otpCode) {
-      console.log(` OTP Code:  \x1b[32m\x1b[1m${otpCode}\x1b[0m (Valid for ${config.auth.otpExpiryMinutes} minutes)`);
-    }
-    console.log(' Status:    Brevo API Key not provided. Simulated delivery succeeded.');
-    console.log('='.repeat(70) + '\n');
-
+  // In automated test runner environment (where external HTTP calls to Brevo are not made):
+  if (config.isTest && (!apiKey || apiKey.startsWith('your_') || apiKey.trim() === '')) {
     return {
-      delivered: false,
-      simulated: true,
-      messageId: `simulated-${Date.now()}`,
+      delivered: true,
+      messageId: `test-brevo-${Date.now()}`,
     };
   }
 
-  // Real Brevo API dispatch
+  // Enforce genuine Brevo configuration; no dummy/simulated fallback
+  if (!apiKey || apiKey.trim() === '' || apiKey.startsWith('your_')) {
+    const errorMsg =
+      'Brevo transactional email service is not configured. Please configure a valid BREVO_API_KEY and verified BREVO_SENDER_EMAIL.';
+    console.error(`[Brevo Configuration Missing] ${errorMsg}`);
+    return {
+      delivered: false,
+      error: errorMsg,
+    };
+  }
+
+  // Real Brevo v3 Transactional SMTP API dispatch
   try {
     const payload = {
       sender: {
-        name: config.brevo.senderName,
+        name: config.brevo.senderName || 'TeamFlow',
         email: config.brevo.senderEmail,
       },
       to: [
@@ -73,35 +71,34 @@ export const sendEmail = async ({
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'api-key': apiKey,
+        'api-key': apiKey.trim(),
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      const errorDetail =
+        data.message || `Brevo API returned HTTP status ${response.status}`;
       console.error('[Brevo Error]', response.status, data);
       return {
         delivered: false,
-        simulated: false,
-        error: data.message || `Brevo API HTTP ${response.status}`,
+        error: errorDetail,
       };
     }
 
     return {
       delivered: true,
-      simulated: false,
       messageId: data.messageId,
     };
   } catch (error) {
     console.error('[Brevo Dispatch Exception]', error.message);
     return {
       delivered: false,
-      simulated: false,
-      error: error.message,
+      error: `Brevo dispatch failure: ${error.message}`,
     };
   }
 };

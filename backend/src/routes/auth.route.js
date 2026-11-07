@@ -63,7 +63,7 @@ const passwordResetLimiter = rateLimit({
 
 // Authentication Lifecycle Endpoints
 router.post('/register', authRateLimiter, validateRequest(registerSchema), authController.register);
-router.post('/verify-email', validateRequest(verifyEmailSchema), authController.verifyEmail);
+router.post('/verify-email', otpRateLimiter, validateRequest(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', otpRateLimiter, validateRequest(resendVerificationSchema), authController.resendVerification);
 router.post('/login', authRateLimiter, validateRequest(loginSchema), authController.login);
 router.post('/login/otp', otpRateLimiter, validateRequest(verifyLoginOtpSchema), authController.verifyLoginOtp);

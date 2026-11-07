@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import PageSkeleton from './components/layout/PageSkeleton.jsx';
+import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 
 // Code-Split Public Authentication & Marketing Pages
 const LandingPage = lazy(() => import('./pages/LandingPage.jsx'));
@@ -32,40 +33,42 @@ const ConnectionTestPage = lazy(() => import('./pages/ConnectionTestPage.jsx'));
 export const App = () => {
   return (
     <BrowserRouter>
-      <Suspense fallback={<PageSkeleton />}>
-        <Routes>
-          {/* Public Marketing & Authentication Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <ErrorBoundary>
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes>
+            {/* Public Marketing & Authentication Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Protected Application Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/onboarding" element={<OnboardingPage />} />
+            {/* Protected Application Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/onboarding" element={<OnboardingPage />} />
 
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailsPage />} />
-              <Route path="/projects/:id/board" element={<KanbanBoardPage />} />
-              <Route path="/board" element={<KanbanBoardPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/my-tasks" element={<MyTasksPage />} />
-              <Route path="/members" element={<TeamMembersPage />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/settings/profile" element={<ProfileSettingsPage />} />
-              <Route path="/settings/workspace" element={<WorkspaceSettingsPage />} />
-              <Route path="/status" element={<ConnectionTestPage />} />
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+                <Route path="/projects/:id/board" element={<KanbanBoardPage />} />
+                <Route path="/board" element={<KanbanBoardPage />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/my-tasks" element={<MyTasksPage />} />
+                <Route path="/members" element={<TeamMembersPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/settings/profile" element={<ProfileSettingsPage />} />
+                <Route path="/settings/workspace" element={<WorkspaceSettingsPage />} />
+                <Route path="/status" element={<ConnectionTestPage />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Catch-all fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+            {/* Catch-all fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 };

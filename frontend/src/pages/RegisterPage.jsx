@@ -35,7 +35,6 @@ export const RegisterPage = () => {
   // Verification Step State
   const [step, setStep] = useState('form'); // 'form' | 'verify'
   const [otp, setOtp] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -78,17 +77,12 @@ export const RegisterPage = () => {
     setErrors({});
 
     try {
-      const res = await register({ name, email, password });
-      toast.success('Account created! A verification code was sent to your email.');
-
-      if (res?.devVerificationOtp) {
-        setDevOtpHint(res.devVerificationOtp);
-      }
-
+      await register({ name, email, password });
+      toast.success('Account created! A 6-digit verification code was sent to your email.');
       setStep('verify');
-      setResendCooldown(30);
+      setResendCooldown(60);
     } catch (err) {
-      setFormError(err.message || 'Registration failed. Please try again.');
+      setFormError(err.message || 'Registration failed. Please check your details and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -121,12 +115,9 @@ export const RegisterPage = () => {
     setFormError('');
 
     try {
-      const res = await resendVerification({ email });
-      if (res?.devVerificationOtp) {
-        setDevOtpHint(res.devVerificationOtp);
-      }
-      setResendCooldown(30);
-      toast.success('A new verification code has been dispatched.');
+      await resendVerification({ email });
+      setResendCooldown(60);
+      toast.success('A new verification code has been dispatched to your email.');
     } catch (err) {
       setFormError(err.message || 'Failed to resend code.');
     } finally {
@@ -285,29 +276,10 @@ export const RegisterPage = () => {
                   <CheckCircle2 className="w-6 h-6 text-sage-600" />
                 </div>
                 <p className="text-xs text-warm-600">
-                  Please enter the 6-digit confirmation code we sent to{' '}
-                  <strong className="text-warm-900">{email}</strong>.
+                  Please enter the 6-digit confirmation code delivered to{' '}
+                  <strong className="text-warm-900">{email}</strong> via Brevo email.
                 </p>
               </div>
-
-              {devOtpHint && (
-                <div
-                  onClick={() => setOtp(devOtpHint)}
-                  className="p-3 rounded-xl bg-sage-50 border border-sage-200 text-xs text-sage-800 cursor-pointer hover:bg-sage-100 transition-colors flex items-center justify-between"
-                  title="Click to paste code into input"
-                >
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Sparkles className="w-3.5 h-3.5 text-sage-600" />
-                    <span>Dev/Test Code:</span>
-                    <strong className="font-mono text-sm tracking-widest text-sage-900">
-                      {devOtpHint}
-                    </strong>
-                  </div>
-                  <span className="text-[10px] text-sage-600 uppercase font-semibold">
-                    Auto-Fill
-                  </span>
-                </div>
-              )}
 
               <Input
                 label="6-Digit Verification Code"
@@ -339,10 +311,14 @@ export const RegisterPage = () => {
               <div className="flex items-center justify-between text-xs pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => {
+                    setStep('form');
+                    setOtp('');
+                    setFormError('');
+                  }}
                   className="text-warm-500 hover:text-warm-700 underline"
                 >
-                  Skip for now
+                  Change email
                 </button>
 
                 <button

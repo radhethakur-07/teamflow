@@ -5,6 +5,7 @@ import Header from './Header.jsx';
 import SearchModal from './SearchModal.jsx';
 import NewTaskModal from '../domain/NewTaskModal.jsx';
 import Badge from '../common/Badge.jsx';
+import ErrorBoundary from '../common/ErrorBoundary.jsx';
 import { Sparkles } from 'lucide-react';
 
 export const AppLayout = () => {
@@ -44,7 +45,9 @@ export const AppLayout = () => {
 
         {/* Scrollable Page Body */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
-          <Outlet context={{ onOpenNewTask: () => setIsNewTaskOpen(true) }} />
+          <ErrorBoundary>
+            <Outlet context={{ onOpenNewTask: () => setIsNewTaskOpen(true) }} />
+          </ErrorBoundary>
         </main>
       </div>
 

@@ -55,6 +55,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    emailVerificationAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    emailVerificationLastSentAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
     loginOtpHash: {
       type: String,
       select: false,
@@ -63,12 +73,32 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    loginOtpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    loginOtpLastSentAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
     passwordResetOtpHash: {
       type: String,
       select: false,
     },
     passwordResetExpires: {
       type: Date,
+      select: false,
+    },
+    passwordResetAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    passwordResetLastSentAt: {
+      type: Date,
+      default: null,
       select: false,
     },
     lastLoginAt: {

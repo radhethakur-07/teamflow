@@ -41,7 +41,7 @@ export const registerUser = async ({
   const verificationOtp = generateNumericOtp(6);
   const verificationOtpHash = hashToken(verificationOtp);
   const verificationExpires = new Date(
-    Date.now() + config.auth.emailVerificationExpiryHours * 60 * 60 * 1000
+    Date.now() + config.auth.otpExpiryMinutes * 60 * 1000
   );
 
   const user = await User.create({
@@ -51,6 +51,8 @@ export const registerUser = async ({
     isEmailVerified: false,
     emailVerificationOtpHash: verificationOtpHash,
     emailVerificationExpires: verificationExpires,
+    emailVerificationAttempts: 0,
+    emailVerificationLastSentAt: new Date(),
   });
 
   // Auto-provision initial personal workspace
@@ -79,12 +81,24 @@ export const registerUser = async ({
   user.defaultWorkspaceId = workspace._id;
   await user.save();
 
-  // Send verification email via Brevo (or console fallback)
-  await sendVerificationEmail({
+  // Send verification email via Brevo transactional email
+  const emailResult = await sendVerificationEmail({
     email: user.email,
     name: user.name,
     otpCode: verificationOtp,
   });
+
+  if (!emailResult.delivered && !config.isTest) {
+    await User.deleteOne({ _id: user._id });
+    await Workspace.deleteOne({ _id: workspace._id });
+    await WorkspaceMember.deleteOne({ userId: user._id });
+    const error = new Error(
+      emailResult.error || 'Failed to dispatch verification email via Brevo. Please check your Brevo configuration.'
+    );
+    error.statusCode = 502;
+    error.code = 'EMAIL_DELIVERY_FAILED';
+    throw error;
+  }
 
   // Issue initial token session
   const tokens = generateTokens(user);
@@ -103,7 +117,6 @@ export const registerUser = async ({
     defaultWorkspace: workspace,
     tokens,
     emailVerificationRequired: true,
-    devVerificationOtp: !config.brevo.apiKey ? verificationOtp : undefined,
   };
 };
 
@@ -112,7 +125,7 @@ export const registerUser = async ({
  */
 export const verifyEmail = async ({ email, otp }) => {
   const user = await User.findOne({ email }).select(
-    '+emailVerificationOtpHash +emailVerificationExpires'
+    '+emailVerificationOtpHash +emailVerificationExpires +emailVerificationAttempts'
   );
 
   if (!user) {
@@ -130,27 +143,50 @@ export const verifyEmail = async ({ email, otp }) => {
     };
   }
 
+  // 1. Check expiration
   if (
     !user.emailVerificationExpires ||
     new Date() > user.emailVerificationExpires
   ) {
-    const error = new Error('Verification code has expired. Please request a new one.');
+    const error = new Error('Verification code has expired. Please request a new code.');
     error.statusCode = 400;
     error.code = 'OTP_EXPIRED';
     throw error;
   }
 
+  // 2. Check maximum attempts (Max 5 attempts to protect against brute-force)
+  const MAX_ATTEMPTS = 5;
+  if ((user.emailVerificationAttempts || 0) >= MAX_ATTEMPTS) {
+    user.emailVerificationOtpHash = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    const error = new Error('Too many invalid attempts. This verification code has been invalidated. Please request a new code.');
+    error.statusCode = 429;
+    error.code = 'MAX_ATTEMPTS_EXCEEDED';
+    throw error;
+  }
+
+  // 3. Compare hash
   const incomingHash = hashToken(otp);
   if (incomingHash !== user.emailVerificationOtpHash) {
-    const error = new Error('Invalid verification code.');
+    user.emailVerificationAttempts = (user.emailVerificationAttempts || 0) + 1;
+    await user.save();
+
+    const remainingAttempts = MAX_ATTEMPTS - user.emailVerificationAttempts;
+    const error = new Error(
+      `Invalid verification code. ${remainingAttempts > 0 ? `${remainingAttempts} attempt(s) remaining.` : 'Code invalidated.'}`
+    );
     error.statusCode = 400;
     error.code = 'INVALID_OTP';
     throw error;
   }
 
+  // 4. Mark verified & clear OTP to PREVENT REUSE
   user.isEmailVerified = true;
   user.emailVerificationOtpHash = undefined;
   user.emailVerificationExpires = undefined;
+  user.emailVerificationAttempts = 0;
   await user.save();
 
   return {
@@ -161,18 +197,18 @@ export const verifyEmail = async ({ email, otp }) => {
 };
 
 /**
- * Resends verification code to user's email
+ * Resends verification code to user's email with cooldown and Brevo delivery
  */
 export const resendVerification = async ({ email }) => {
   const user = await User.findOne({ email }).select(
-    '+emailVerificationOtpHash +emailVerificationExpires'
+    '+emailVerificationOtpHash +emailVerificationExpires +emailVerificationAttempts +emailVerificationLastSentAt'
   );
 
   if (!user) {
     // Anti-enumeration: report generic success
     return {
       success: true,
-      message: 'If this email is registered, a new verification code was sent.',
+      message: 'If this email is registered, a new verification code was dispatched.',
     };
   }
 
@@ -184,23 +220,50 @@ export const resendVerification = async ({ email }) => {
     };
   }
 
+  // Cooldown enforcement: 60 seconds minimum interval
+  const COOLDOWN_SECONDS = 60;
+  if (user.emailVerificationLastSentAt) {
+    const elapsedSeconds =
+      (Date.now() - new Date(user.emailVerificationLastSentAt).getTime()) / 1000;
+    if (elapsedSeconds < COOLDOWN_SECONDS) {
+      const remaining = Math.ceil(COOLDOWN_SECONDS - elapsedSeconds);
+      const error = new Error(
+        `Please wait ${remaining} seconds before requesting a new verification code.`
+      );
+      error.statusCode = 429;
+      error.code = 'COOLDOWN_ACTIVE';
+      error.retryAfter = remaining;
+      throw error;
+    }
+  }
+
   const verificationOtp = generateNumericOtp(6);
   user.emailVerificationOtpHash = hashToken(verificationOtp);
   user.emailVerificationExpires = new Date(
-    Date.now() + config.auth.emailVerificationExpiryHours * 60 * 60 * 1000
+    Date.now() + config.auth.otpExpiryMinutes * 60 * 1000
   );
+  user.emailVerificationAttempts = 0;
+  user.emailVerificationLastSentAt = new Date();
   await user.save();
 
-  await sendVerificationEmail({
+  const emailResult = await sendVerificationEmail({
     email: user.email,
     name: user.name,
     otpCode: verificationOtp,
   });
 
+  if (!emailResult.delivered && !config.isTest) {
+    const error = new Error(
+      emailResult.error || 'Failed to dispatch verification email via Brevo. Please check your Brevo configuration.'
+    );
+    error.statusCode = 502;
+    error.code = 'EMAIL_DELIVERY_FAILED';
+    throw error;
+  }
+
   return {
     success: true,
-    message: 'Verification code resent.',
-    devVerificationOtp: !config.brevo.apiKey ? verificationOtp : undefined,
+    message: 'Verification code resent successfully.',
   };
 };
 
@@ -262,7 +325,6 @@ export const loginUser = async ({
         requireOtp: true,
         email: user.email,
         message: 'A 6-digit verification code has been sent to your email address.',
-        devOtp: !config.brevo.apiKey ? loginOtp : undefined,
       };
     }
 
@@ -301,8 +363,32 @@ export const loginUser = async ({
     ipAddress,
   });
 
+  // Query and hydrate user's workspaces and default workspace to prevent dashboard blank screen race conditions
+  const workspaceMemberships = await WorkspaceMember.find({ userId: user._id })
+    .populate('workspaceId')
+    .lean();
+
+  const workspaces = workspaceMemberships
+    .map((wm) => {
+      const ws = wm.workspaceId;
+      if (!ws || !ws._id) return null;
+      return {
+        ...ws,
+        id: ws._id.toString(),
+        memberRole: wm.role,
+      };
+    })
+    .filter(Boolean);
+
+  const defaultWorkspace =
+    workspaces.find((w) => w._id?.toString() === user.defaultWorkspaceId?.toString()) ||
+    workspaces[0] ||
+    null;
+
   return {
     user: user.toSafeJSON(),
+    workspaces,
+    defaultWorkspace,
     tokens,
   };
 };
@@ -357,8 +443,31 @@ export const verifyLoginOtp = async ({
     ipAddress,
   });
 
+  const workspaceMemberships = await WorkspaceMember.find({ userId: user._id })
+    .populate('workspaceId')
+    .lean();
+
+  const workspaces = workspaceMemberships
+    .map((wm) => {
+      const ws = wm.workspaceId;
+      if (!ws || !ws._id) return null;
+      return {
+        ...ws,
+        id: ws._id.toString(),
+        memberRole: wm.role,
+      };
+    })
+    .filter(Boolean);
+
+  const defaultWorkspace =
+    workspaces.find((w) => w._id?.toString() === user.defaultWorkspaceId?.toString()) ||
+    workspaces[0] ||
+    null;
+
   return {
     user: user.toSafeJSON(),
+    workspaces,
+    defaultWorkspace,
     tokens,
   };
 };
@@ -488,17 +597,25 @@ export const forgotPassword = async ({ email }) => {
   );
   await user.save();
 
-  await sendPasswordResetEmail({
+  const emailResult = await sendPasswordResetEmail({
     email: user.email,
     name: user.name,
     otpCode: resetOtp,
   });
 
+  if (!emailResult.delivered && !config.isTest) {
+    const error = new Error(
+      emailResult.error || 'Failed to dispatch password recovery email via Brevo. Please check your Brevo configuration.'
+    );
+    error.statusCode = 502;
+    error.code = 'EMAIL_DELIVERY_FAILED';
+    throw error;
+  }
+
   return {
     success: true,
     message:
       'If an account with that email exists, password reset instructions have been sent.',
-    devOtp: !config.brevo.apiKey ? resetOtp : undefined,
   };
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import Card from '../common/Card.jsx';
 import { cn } from '../../utils/cn.js';
 
@@ -7,11 +7,27 @@ export const StatWidget = ({
   title,
   value,
   trend,
-  trendLabel = 'vs last sprint',
+  trendLabel,
+  change,
   icon: Icon,
-  variant = 'terracotta',
+  variant,
+  color,
 }) => {
-  const isPositive = trend && trend.startsWith('+');
+  // Gracefully handle color vs variant alias
+  const activeVariant = variant || color || 'terracotta';
+  const activeLabel = trendLabel || change || '';
+
+  // Defensively format value: never crash if an aggregation object was passed
+  let displayValue = value;
+  if (typeof value === 'object' && value !== null) {
+    displayValue = value.totalEvents ?? value.count ?? value.total ?? value.value ?? 0;
+  } else if (displayValue === null || displayValue === undefined) {
+    displayValue = 0;
+  }
+
+  // Trend detection supporting 'up', 'down', '+5%', '-2%', 'neutral'
+  const isPositive = trend === 'up' || (typeof trend === 'string' && trend.startsWith('+'));
+  const isNegative = trend === 'down' || (typeof trend === 'string' && trend.startsWith('-'));
 
   const variants = {
     terracotta: 'text-terracotta-500 bg-terracotta-50 border-terracotta-100',
@@ -28,7 +44,7 @@ export const StatWidget = ({
           {title}
         </span>
         {Icon && (
-          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border", variants[variant])}>
+          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border", variants[activeVariant] || variants.terracotta)}>
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -36,7 +52,7 @@ export const StatWidget = ({
 
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-2xl font-heading font-extrabold text-warm-900 tracking-tight">
-          {value}
+          {displayValue}
         </span>
 
         {trend && (
@@ -44,13 +60,19 @@ export const StatWidget = ({
             <span
               className={cn(
                 "inline-flex items-center font-bold px-1.5 py-0.5 rounded",
-                isPositive ? "text-sage-600 bg-sage-100" : "text-terracotta-600 bg-terracotta-100"
+                isPositive
+                  ? "text-sage-700 bg-sage-100"
+                  : isNegative
+                  ? "text-terracotta-700 bg-terracotta-100"
+                  : "text-warm-600 bg-warm-100"
               )}
             >
               {isPositive ? (
                 <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
-              ) : (
+              ) : isNegative ? (
                 <ArrowDownRight className="w-3 h-3 stroke-[2.5]" />
+              ) : (
+                <Minus className="w-3 h-3 stroke-[2]" />
               )}
               {trend}
             </span>
@@ -58,9 +80,9 @@ export const StatWidget = ({
         )}
       </div>
 
-      {trendLabel && (
-        <p className="text-[11px] text-warm-400 font-medium pt-1 border-t border-warm-100">
-          {trendLabel}
+      {activeLabel && (
+        <p className="text-[11px] text-warm-500 font-medium pt-1 border-t border-warm-100">
+          {activeLabel}
         </p>
       )}
     </Card>

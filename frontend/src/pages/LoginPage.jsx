@@ -35,7 +35,6 @@ export const LoginPage = () => {
   // OTP Step State
   const [step, setStep] = useState('credentials'); // 'credentials' | 'otp'
   const [otp, setOtp] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const from = location.state?.from?.pathname || '/dashboard';
@@ -69,8 +68,7 @@ export const LoginPage = () => {
 
       if (res?.requireOtp) {
         setStep('otp');
-        setDevOtpHint(res.devOtp || '');
-        setResendCooldown(30);
+        setResendCooldown(60);
         toast.info('Please enter the 6-digit verification code sent to your email.');
         return;
       }
@@ -111,10 +109,9 @@ export const LoginPage = () => {
     setFormError('');
 
     try {
-      const res = await login({ email, password });
-      if (res?.devOtp) setDevOtpHint(res.devOtp);
-      setResendCooldown(30);
-      toast.success('A new verification code has been dispatched.');
+      await login({ email, password });
+      setResendCooldown(60);
+      toast.success('A new verification code has been dispatched to your email.');
     } catch (err) {
       setFormError(err.message || 'Failed to resend code.');
     } finally {
@@ -237,28 +234,9 @@ export const LoginPage = () => {
                 </div>
                 <p className="text-xs text-warm-600">
                   A verification code has been dispatched to{' '}
-                  <strong className="text-warm-900">{email}</strong>.
+                  <strong className="text-warm-900">{email}</strong> via Brevo email.
                 </p>
               </div>
-
-              {devOtpHint && (
-                <div
-                  onClick={() => setOtp(devOtpHint)}
-                  className="p-3 rounded-xl bg-sage-50 border border-sage-200 text-xs text-sage-800 cursor-pointer hover:bg-sage-100 transition-colors flex items-center justify-between"
-                  title="Click to paste code into input"
-                >
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-sage-600" />
-                    <span>Dev/Test Code:</span>
-                    <strong className="font-mono text-sm tracking-widest text-sage-900">
-                      {devOtpHint}
-                    </strong>
-                  </div>
-                  <span className="text-[10px] text-sage-600 uppercase font-semibold">
-                    Auto-Fill
-                  </span>
-                </div>
-              )}
 
               <Input
                 label="6-Digit Verification Code"

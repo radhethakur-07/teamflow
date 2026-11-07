@@ -36,7 +36,10 @@ export const DashboardPage = () => {
 
   const fetchAnalytics = useCallback(async () => {
     const wsId = workspace?._id || workspace?.id;
-    if (!wsId) return;
+    if (!wsId) {
+      setIsLoadingAnalytics(false);
+      return;
+    }
 
     setIsLoadingAnalytics(true);
     setAnalyticsError(null);
@@ -73,7 +76,10 @@ export const DashboardPage = () => {
   const projectMetrics = analytics?.projectMetrics || [];
   const teamWorkload = analytics?.teamWorkload || [];
   const overdueSummary = analytics?.overdueSummary || { count: 0, tasks: [] };
-  const activityVelocity = analytics?.activityVelocity ?? 0;
+  const rawVelocity = analytics?.activityVelocity;
+  const activityVelocity = typeof rawVelocity === 'object' && rawVelocity !== null
+    ? (rawVelocity.totalEvents ?? 0)
+    : (rawVelocity ?? 0);
 
   const urgentTasks = tasks
     .filter((t) => t.priority === 'urgent' || t.priority === 'high')
@@ -268,8 +274,11 @@ export const DashboardPage = () => {
           </div>
 
           <div className="space-y-3.5">
-            {projectMetrics.map((pm) => (
-              <div key={pm.projectId} className="space-y-1.5 p-3 rounded-xl bg-warm-50/60 border border-warm-100">
+            {projectMetrics.map((pm, idx) => (
+              <div
+                key={pm.projectId || pm._id || pm.id || idx}
+                className="space-y-1.5 p-3 rounded-xl bg-warm-50/60 border border-warm-100"
+              >
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <span
@@ -326,9 +335,9 @@ export const DashboardPage = () => {
           </div>
 
           <div className="space-y-3">
-            {teamWorkload.map((tw) => (
+            {teamWorkload.map((tw, idx) => (
               <div
-                key={tw.userId}
+                key={tw.userId || tw._id || tw.email || idx}
                 className="flex items-center justify-between p-3 rounded-xl bg-warm-50/60 border border-warm-100"
               >
                 <div className="flex items-center gap-3">
@@ -343,10 +352,10 @@ export const DashboardPage = () => {
 
                 <div className="flex items-center gap-2">
                   <Badge variant="charcoal" size="sm" title="Active pending tasks">
-                    {tw.active} Active
+                    {tw.activeCount ?? tw.active ?? 0} Active
                   </Badge>
                   <Badge variant="sage" size="sm" title="Completed tasks">
-                    {tw.completed} Done
+                    {tw.completedCount ?? tw.completed ?? 0} Done
                   </Badge>
                 </div>
               </div>

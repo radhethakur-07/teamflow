@@ -8,10 +8,17 @@ const __dirname = path.dirname(__filename);
 // Load .env from backend root if present
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+// Detect automated test execution across platforms
+const isTest =
+  process.env.NODE_ENV === 'test' ||
+  process.execArgv.some((arg) => arg.includes('test')) ||
+  process.argv.some((arg) => arg.includes('test'));
+
 export const config = {
   port: parseInt(process.env.PORT, 10) || 5000,
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv: process.env.NODE_ENV || (isTest ? 'test' : 'development'),
   isProduction: process.env.NODE_ENV === 'production',
+  isTest,
   mongodbUri: process.env.MONGODB_URI || '',
   cookieSecret: process.env.COOKIE_SECRET || 'dev_teamflow_cookie_signing_secret_9921_key',
   jwt: {

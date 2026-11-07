@@ -80,10 +80,15 @@ export const AuthProvider = ({ children }) => {
         setCredentials({
           user: result.user,
           token: result.tokens?.accessToken,
+          workspaces: result.workspaces,
         })
       );
 
-      // Rehydrate workspace list
+      if (result.defaultWorkspace) {
+        dispatch(setCurrentWorkspace(result.defaultWorkspace));
+      }
+
+      // Rehydrate workspace list in background
       try {
         const profile = await authService.getMe();
         if (profile?.workspaces) {
@@ -111,8 +116,13 @@ export const AuthProvider = ({ children }) => {
         setCredentials({
           user: result.user,
           token: result.tokens?.accessToken,
+          workspaces: result.workspaces,
         })
       );
+
+      if (result.defaultWorkspace) {
+        dispatch(setCurrentWorkspace(result.defaultWorkspace));
+      }
 
       try {
         const profile = await authService.getMe();

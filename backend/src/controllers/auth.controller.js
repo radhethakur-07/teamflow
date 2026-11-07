@@ -46,7 +46,6 @@ export const register = asyncHandler(async (req, res) => {
       accessToken: result.tokens.accessToken,
     },
     emailVerificationRequired: result.emailVerificationRequired,
-    devVerificationOtp: result.devVerificationOtp,
   };
 
   return sendCreated(res, responseData, 'User registration successful');
@@ -85,6 +84,8 @@ export const login = asyncHandler(async (req, res) => {
 
   const responseData = {
     user: result.user,
+    workspaces: result.workspaces,
+    defaultWorkspace: result.defaultWorkspace,
     tokens: {
       accessToken: result.tokens.accessToken,
     },
@@ -109,6 +110,8 @@ export const verifyLoginOtp = asyncHandler(async (req, res) => {
 
   const responseData = {
     user: result.user,
+    workspaces: result.workspaces,
+    defaultWorkspace: result.defaultWorkspace,
     tokens: {
       accessToken: result.tokens.accessToken,
     },

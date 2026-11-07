@@ -64,7 +64,7 @@ test('Production Authentication Suite: Email verification, Brevo OTP, Token Rota
 
     // Save tokens and cookies
     accessToken = body.data.tokens.accessToken;
-    devVerificationOtp = body.data.devVerificationOtp;
+    assert.equal(body.data.devVerificationOtp, undefined, 'Dummy verification OTP must NOT be exposed in JSON response');
 
     // Check Set-Cookie header for teamflow_refresh_token
     const setCookieHeader = res.headers.get('set-cookie');
@@ -77,15 +77,38 @@ test('Production Authentication Suite: Email verification, Brevo OTP, Token Rota
   });
 
   // 2. Email verification using the 6-digit OTP
-  await t.test('2. Verify email address using the 6-digit OTP', async () => {
-    assert.ok(devVerificationOtp, 'Dev verification OTP should be generated');
+  await t.test('2. Verify email address using the 6-digit OTP (security, invalid check, and reuse prevention)', async () => {
+    // A. Invalid OTP check
+    const invalidRes = await fetch(`${baseUrl}/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUser.email,
+        otp: '000000',
+      }),
+    });
+    const invalidBody = await invalidRes.json();
+    assert.equal(invalidRes.status, 400);
+    assert.equal(invalidBody.error.code, 'INVALID_OTP');
 
+    // B. Set a verified OTP hash directly on DB user to test successful verification
+    const realOtp = '654321';
+    await User.updateOne(
+      { email: testUser.email },
+      {
+        emailVerificationOtpHash: hashToken(realOtp),
+        emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),
+        emailVerificationAttempts: 0,
+      }
+    );
+
+    // C. Verify with correct OTP
     const res = await fetch(`${baseUrl}/verify-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: testUser.email,
-        otp: devVerificationOtp,
+        otp: realOtp,
       }),
     });
 
@@ -94,8 +117,9 @@ test('Production Authentication Suite: Email verification, Brevo OTP, Token Rota
     assert.equal(body.success, true);
     assert.equal(body.data.isEmailVerified, true);
 
-    const updatedUser = await User.findOne({ email: testUser.email });
+    const updatedUser = await User.findOne({ email: testUser.email }).select('+emailVerificationOtpHash');
     assert.equal(updatedUser.isEmailVerified, true);
+    assert.equal(updatedUser.emailVerificationOtpHash, undefined, 'OTP hash must be wiped on verification to prevent reuse');
   });
 
   // 3. User Login: returns access token and rotates HttpOnly refresh cookie
@@ -113,6 +137,9 @@ test('Production Authentication Suite: Email verification, Brevo OTP, Token Rota
     assert.equal(res.status, 200);
     assert.equal(body.success, true);
     assert.ok(body.data.tokens.accessToken);
+    assert.ok(body.data.workspaces, 'Workspaces array must be returned on login to prevent blank dashboard race condition');
+    assert.equal(body.data.workspaces.length, 1);
+    assert.ok(body.data.defaultWorkspace, 'Default workspace must be returned on login');
     accessToken = body.data.tokens.accessToken;
 
     const setCookieHeader = res.headers.get('set-cookie');
@@ -196,9 +223,17 @@ test('Production Authentication Suite: Email verification, Brevo OTP, Token Rota
     const forgotBody = await forgotRes.json();
     assert.equal(forgotRes.status, 200);
     assert.equal(forgotBody.success, true);
-    assert.ok(forgotBody.data.devOtp, 'Development OTP returned in simulation mode');
+    assert.equal(forgotBody.data.devOtp, undefined, 'Development OTP must NOT be exposed in response payload');
 
-    const resetOtp = forgotBody.data.devOtp;
+    // Securely simulate entering the single-use OTP sent to user's email
+    const resetOtp = '852963';
+    await User.updateOne(
+      { email: testUser.email },
+      {
+        passwordResetOtpHash: hashToken(resetOtp),
+        passwordResetExpires: new Date(Date.now() + 15 * 60 * 1000),
+      }
+    );
     const newPassword = 'BrandNewPassword2026!';
 
     // Reset password with OTP
