@@ -95,6 +95,7 @@ export const ProfileDropdown = ({ isOpen, onClose }) => {
               type="button"
               onClick={() => {
                 setShowLogoutConfirm(true);
+                onClose && onClose();
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-terracotta-600 hover:bg-terracotta-50 transition-colors text-left"
             >

@@ -23,6 +23,17 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize and check persistent session on application boot
   const checkAuth = useCallback(async () => {
+    const hasToken =
+      Boolean(localStorage.getItem('teamflow_access_token')) ||
+      Boolean(localStorage.getItem('teamflow_refresh_token'));
+
+    if (!hasToken) {
+      dispatch(logoutAction());
+      dispatch(setAuthLoading(false));
+      setInitChecked(true);
+      return;
+    }
+
     try {
       dispatch(setAuthLoading(true));
       const profileData = await authService.getMe();
@@ -35,15 +46,17 @@ export const AuthProvider = ({ children }) => {
         );
       }
     } catch (err) {
-      // If initial getMe failed, attempt silent refresh via HttpOnly cookie
+      // If initial getMe failed (e.g. 15m access token expired), attempt silent refresh
       try {
-        const refreshRes = await authService.refreshToken();
+        const storedRefreshToken = localStorage.getItem('teamflow_refresh_token');
+        const refreshRes = await authService.refreshToken(storedRefreshToken);
         if (refreshRes?.tokens?.accessToken) {
           const profileData = await authService.getMe();
           dispatch(
             setCredentials({
               user: profileData.user,
               token: refreshRes.tokens.accessToken,
+              refreshToken: refreshRes.tokens.refreshToken || storedRefreshToken,
               workspaces: profileData.workspaces,
             })
           );
@@ -80,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         setCredentials({
           user: result.user,
           token: result.tokens?.accessToken,
+          refreshToken: result.tokens?.refreshToken,
           workspaces: result.workspaces,
         })
       );
@@ -116,6 +130,7 @@ export const AuthProvider = ({ children }) => {
         setCredentials({
           user: result.user,
           token: result.tokens?.accessToken,
+          refreshToken: result.tokens?.refreshToken,
           workspaces: result.workspaces,
         })
       );
@@ -149,6 +164,7 @@ export const AuthProvider = ({ children }) => {
         setCredentials({
           user: result.user,
           token: result.tokens?.accessToken,
+          refreshToken: result.tokens?.refreshToken,
           defaultWorkspace: result.defaultWorkspace,
         })
       );

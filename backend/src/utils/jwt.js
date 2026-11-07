@@ -83,5 +83,5 @@ export const getRefreshTokenCookieOptions = () => ({
   secure: config.isProduction,
   sameSite: config.isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-  path: '/api/v1/auth', // Scoped exclusively to authentication endpoints
+  path: '/',
 });

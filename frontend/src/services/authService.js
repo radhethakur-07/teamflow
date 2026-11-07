@@ -50,10 +50,11 @@ export const authService = {
   },
 
   /**
-   * Explicitly triggers token refresh using HttpOnly cookie
+   * Explicitly triggers token refresh using HttpOnly cookie or stored refresh token
    */
-  async refreshToken() {
-    const res = await apiClient.post('/v1/auth/refresh-token');
+  async refreshToken(refreshTokenOverride = null) {
+    const stored = refreshTokenOverride || localStorage.getItem('teamflow_refresh_token');
+    const res = await apiClient.post('/v1/auth/refresh-token', stored ? { refreshToken: stored } : {});
     return res.data;
   },
 
@@ -109,9 +110,12 @@ export const authService = {
    */
   async logout() {
     try {
-      await apiClient.post('/v1/auth/logout');
+      const stored = localStorage.getItem('teamflow_refresh_token');
+      await apiClient.post('/v1/auth/logout', stored ? { refreshToken: stored } : {});
     } finally {
       localStorage.removeItem('teamflow_access_token');
+      localStorage.removeItem('teamflow_refresh_token');
+      localStorage.removeItem('teamflow_active_workspace_id');
     }
   },
 
@@ -123,6 +127,8 @@ export const authService = {
       await apiClient.post('/v1/auth/logout-all');
     } finally {
       localStorage.removeItem('teamflow_access_token');
+      localStorage.removeItem('teamflow_refresh_token');
+      localStorage.removeItem('teamflow_active_workspace_id');
     }
   },
 };

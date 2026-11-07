@@ -80,19 +80,26 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Send refresh token request with HttpOnly cookie
+        // Send refresh token request with HttpOnly cookie and fallback to stored refresh token
+        const storedRefreshToken = localStorage.getItem('teamflow_refresh_token');
         const refreshResponse = await axios.post(
           `${API_BASE_URL}/v1/auth/refresh-token`,
-          {},
+          storedRefreshToken ? { refreshToken: storedRefreshToken } : {},
           { withCredentials: true }
         );
 
         const newAccessToken =
           refreshResponse.data?.data?.tokens?.accessToken ||
           refreshResponse.data?.tokens?.accessToken;
+        const newRefreshToken =
+          refreshResponse.data?.data?.tokens?.refreshToken ||
+          refreshResponse.data?.tokens?.refreshToken;
 
         if (newAccessToken) {
           localStorage.setItem('teamflow_access_token', newAccessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('teamflow_refresh_token', newRefreshToken);
+          }
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
@@ -104,6 +111,7 @@ apiClient.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         localStorage.removeItem('teamflow_access_token');
+        localStorage.removeItem('teamflow_refresh_token');
         return Promise.reject({
           message: 'Your session has expired. Please sign in again.',
           code: 'SESSION_EXPIRED',

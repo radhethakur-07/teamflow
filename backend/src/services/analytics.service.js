@@ -43,6 +43,11 @@ export const getWorkspaceAnalytics = async (workspaceId, { timeframe = '30d' } =
     else if (col === 'done' || col === 'completed') taskBreakdown.done++;
   });
 
+  taskBreakdown.completionRate =
+    taskBreakdown.total > 0
+      ? Math.round((taskBreakdown.done / taskBreakdown.total) * 100)
+      : 0;
+
   // 2. Project Completion Percentages & Metrics
   const projects = await Project.find({ workspaceId: wsObjectId, status: { $ne: 'archived' } }).lean();
 

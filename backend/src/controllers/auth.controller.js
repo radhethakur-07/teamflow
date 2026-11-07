@@ -38,7 +38,6 @@ export const register = asyncHandler(async (req, res) => {
     setRefreshTokenCookie(res, result.tokens.refreshToken);
   }
 
-  // Response payload never exposes refresh token in JSON
   const responseData = {
     user: result.user,
     defaultWorkspace: result.defaultWorkspace,
@@ -88,6 +87,7 @@ export const login = asyncHandler(async (req, res) => {
     defaultWorkspace: result.defaultWorkspace,
     tokens: {
       accessToken: result.tokens.accessToken,
+      refreshToken: result.tokens.refreshToken,
     },
   };
 
@@ -114,6 +114,7 @@ export const verifyLoginOtp = asyncHandler(async (req, res) => {
     defaultWorkspace: result.defaultWorkspace,
     tokens: {
       accessToken: result.tokens.accessToken,
+      refreshToken: result.tokens.refreshToken,
     },
   };
 
@@ -142,6 +143,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
     {
       tokens: {
         accessToken: result.tokens.accessToken,
+        refreshToken: result.tokens.refreshToken,
       },
     },
     'Token refreshed successfully'

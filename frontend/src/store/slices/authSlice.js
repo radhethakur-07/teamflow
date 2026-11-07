@@ -22,7 +22,7 @@ export const authSlice = createSlice({
       state.isLoading = action.payload;
     },
     setCredentials: (state, action) => {
-      const { user, token, workspaces, defaultWorkspace } = action.payload;
+      const { user, token, refreshToken, workspaces, defaultWorkspace } = action.payload;
       state.user = user;
       state.token = token || state.token;
       state.isAuthenticated = true;
@@ -41,6 +41,9 @@ export const authSlice = createSlice({
 
       if (token) {
         localStorage.setItem('teamflow_access_token', token);
+      }
+      if (refreshToken) {
+        localStorage.setItem('teamflow_refresh_token', refreshToken);
       }
     },
     setUser: (state, action) => {
@@ -83,6 +86,8 @@ export const authSlice = createSlice({
       state.otpChallenge = null;
       state.pendingEmail = null;
       localStorage.removeItem('teamflow_access_token');
+      localStorage.removeItem('teamflow_refresh_token');
+      localStorage.removeItem('teamflow_active_workspace_id');
     },
   },
 });

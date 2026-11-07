@@ -76,6 +76,12 @@ export const DashboardPage = () => {
   const projectMetrics = analytics?.projectMetrics || [];
   const teamWorkload = analytics?.teamWorkload || [];
   const overdueSummary = analytics?.overdueSummary || { count: 0, tasks: [] };
+  const completionRate =
+    typeof taskBreakdown?.completionRate === 'number'
+      ? taskBreakdown.completionRate
+      : taskBreakdown?.total > 0
+      ? Math.round(((taskBreakdown.done || 0) / taskBreakdown.total) * 100)
+      : 0;
   const rawVelocity = analytics?.activityVelocity;
   const activityVelocity = typeof rawVelocity === 'object' && rawVelocity !== null
     ? (rawVelocity.totalEvents ?? 0)
@@ -156,9 +162,9 @@ export const DashboardPage = () => {
         />
         <StatWidget
           title="Completion Rate"
-          value={`${taskBreakdown.completionRate}%`}
-          change={`${taskBreakdown.done} of ${taskBreakdown.total} tasks completed`}
-          trend={taskBreakdown.completionRate >= 50 ? 'up' : 'neutral'}
+          value={`${completionRate}%`}
+          change={`${taskBreakdown.done || 0} of ${taskBreakdown.total || 0} tasks completed`}
+          trend={completionRate >= 50 ? 'up' : 'neutral'}
           color="sage"
           icon={CheckCircle2}
         />
